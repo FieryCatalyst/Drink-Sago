@@ -1,0 +1,30 @@
+.logoloop {
+  --logoloop-gap: 32px;
+  --logoloop-logoHeight: 28px;
+  --logoloop-fadeColorAuto: #171717;
+  overflow: hidden;
+  position: relative;
+}
+
+.logoloop--vertical { display: inline-block; height: 100%; }
+.logoloop--scale-hover { padding-bottom: calc(var(--logoloop-logoHeight) * .1); padding-top: calc(var(--logoloop-logoHeight) * .1); }
+.logoloop__track { display: flex; position: relative; user-select: none; width: max-content; will-change: transform; z-index: 0; }
+.logoloop--vertical .logoloop__track { flex-direction: column; height: max-content; width: 100%; }
+.logoloop__list { align-items: center; display: flex; }
+.logoloop--vertical .logoloop__list { flex-direction: column; }
+.logoloop__item { flex: 0 0 auto; font-size: var(--logoloop-logoHeight); line-height: 1; margin-right: var(--logoloop-gap); }
+.logoloop--vertical .logoloop__item { margin-bottom: var(--logoloop-gap); margin-right: 0; }
+.logoloop__item:last-child { margin-right: var(--logoloop-gap); }
+.logoloop--vertical .logoloop__item:last-child { margin-bottom: var(--logoloop-gap); margin-right: 0; }
+.logoloop__node { align-items: center; display: inline-flex; transition: transform .3s cubic-bezier(.4,0,.2,1); }
+.logoloop__link { align-items: center; border-radius: 4px; color: var(--ivory); display: inline-flex; text-decoration: none; transition: opacity .2s ease; }
+.logoloop__link:hover { opacity: .75; }
+.logoloop__link:focus-visible { outline: 2px solid var(--brass); outline-offset: 5px; }
+.logoloop--scale-hover .logoloop__item:hover .logoloop__node { transform: scale(1.2); }
+.logoloop--fade::before, .logoloop--fade::after { bottom: 0; content: ""; pointer-events: none; position: absolute; top: 0; width: clamp(30px, 8%, 110px); z-index: 1; }
+.logoloop--fade::before { background: linear-gradient(to right, var(--logoloop-fadeColor, var(--logoloop-fadeColorAuto)), transparent); left: 0; }
+.logoloop--fade::after { background: linear-gradient(to left, var(--logoloop-fadeColor, var(--logoloop-fadeColorAuto)), transparent); right: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .logoloop__track { transform: translate3d(0, 0, 0) !important; }
+  .logoloop__node { transition: none !important; }
+}
