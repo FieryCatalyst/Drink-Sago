@@ -47,9 +47,9 @@ export default function DepthCarousel({
   tiltDirection = "right",
   perspective = 1400,
   visibleCards = 4,
-  falloff = 0.2,
-  blur = 6,
-  duration = 700,
+  falloff = 0.14,
+  blur = 3,
+  duration = 620,
   ease = "power3.out",
   autoplay = false,
   autoplayDelay = 3200,
@@ -84,8 +84,11 @@ export default function DepthCarousel({
       const visible = Math.abs(distance) <= visibleCards + 0.5;
       const opacity = visible ? (distance < 0 ? Math.max(0, 1 + distance) : 1) : 0;
       const brightness = Math.max(0.15, 1 - behind * falloff);
-      const blurAmount = Math.min(blur, (behind / Math.max(1, visibleCards)) * blur);
-      card.style.transform = `translate(-50%, -50%) translateX(${(direction * spread * distance).toFixed(2)}px) translateZ(${(-depth * distance).toFixed(2)}px) rotateY(${(direction * tilt * clamp(distance, 0, 1)).toFixed(2)}deg)`;
+      const blurAmount = visible ? Math.min(blur, (behind / Math.max(1, visibleCards)) * blur) : 0;
+      const x = direction * spread * distance;
+      const z = -depth * distance;
+      const rotateY = direction * tilt * clamp(distance, 0, 1);
+      card.style.transform = `translate3d(calc(-50% + ${x.toFixed(2)}px), -50%, ${z.toFixed(2)}px) rotateY(${rotateY.toFixed(2)}deg)`;
       card.style.opacity = opacity.toFixed(3);
       card.style.filter = `brightness(${brightness.toFixed(3)}) blur(${blurAmount.toFixed(2)}px)`;
       card.style.zIndex = String(Math.round(2000 - distance * 20));
