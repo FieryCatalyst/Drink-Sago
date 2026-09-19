@@ -5,6 +5,7 @@ import { ArrowRight, ChevronDown, Menu, Search, X } from "lucide-react";
 import { useState } from "react";
 import SiteFooter from "@/components/site-footer";
 import DepthCarousel from "@/components/ui/depth-carousel";
+import ClubModal from "@/components/club-modal";
 
 const products = [
   { name: "Gold Reserve", type: "Oak whisky", details: "42.8% ABV · 750 ml", note: "Toasted oak, dark honey and a long, warm finish.", image: "/assets/5.png" },
@@ -41,8 +42,15 @@ export default function Home() {
   const [country, setCountry] = useState("All markets");
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [clubModalOpen, setClubModalOpen] = useState(false);
   const selectedCocktail = cocktails[activeCocktail];
   const filteredRetailers = retailers.filter((retailer) => (country === "All markets" || retailer.country === country) && `${retailer.name} ${retailer.type} ${retailer.address}`.toLowerCase().includes(query.toLowerCase()));
+
+  const openClubModal = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setClubModalOpen(true);
+    setMenuOpen(false);
+  };
 
   return (
     <div className="sago-home">
@@ -50,16 +58,20 @@ export default function Home() {
         <button className="home-nav__menu" type="button" aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"} aria-expanded={menuOpen} onClick={() => setMenuOpen((isOpen) => !isOpen)}>{menuOpen ? <X size={19} /> : <Menu size={19} />}</button>
         <a className="home-nav__brand" href="#top" aria-label="Sago home"><Image src="/assets/LOGO.png" alt="Sago" width={48} height={48} priority /></a>
         <nav aria-label="Primary navigation">
-          <a href="#collection" onClick={() => setMenuOpen(false)}>Collection</a>
+          <a href="/collection" onClick={() => setMenuOpen(false)}>Our Products</a>
           <a href="/cocktails" onClick={() => setMenuOpen(false)}>Cocktails</a>
-          <a href="#story" onClick={() => setMenuOpen(false)}>Our story</a>
+          <a href="/about" onClick={() => setMenuOpen(false)}>Our Story</a>
+          <a href="/promotions" onClick={() => setMenuOpen(false)}>Promotions</a>
+          <a href="#" onClick={openClubModal}>Join the SAGO Club</a>
         </nav>
         <a className="home-nav__shop" href="#shop">Find your pour <ArrowRight size={15} /></a>
         <div className={`home-nav__drawer${menuOpen ? " is-open" : ""}`} aria-hidden={!menuOpen}>
-          <a href="#collection" tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)}>Collection <span>01</span></a>
+          <a href="/collection" tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)}>Our Products <span>01</span></a>
           <a href="/cocktails" tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)}>Cocktails <span>02</span></a>
-          <a href="#story" tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)}>Our story <span>03</span></a>
-          <a href="#shop" tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)}>Find your pour <span>04</span></a>
+          <a href="/about" tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)}>Our Story <span>03</span></a>
+          <a href="/promotions" tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)}>Promotions <span>04</span></a>
+          <a href="#" tabIndex={menuOpen ? 0 : -1} onClick={openClubModal}>Join the SAGO Club <span>05</span></a>
+          <a href="#shop" tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)}>Find your pour <span>06</span></a>
         </div>
       </header>
 
@@ -108,6 +120,7 @@ export default function Home() {
         <section className="home-find" id="shop"><Image src="/assets/4.png" alt="Sago whisky poured over ice" fill sizes="100vw" /><div className="home-find__shade" /><div className="home-find__content"><p className="eyebrow">Find your pour</p><h2 className="display">The next round<br /><em>is closer.</em></h2><div className="home-find__tools"><label className="home-search"><Search size={16} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search city or venue" aria-label="Search retailers" /></label><label className="home-select"><select value={country} onChange={(event) => setCountry(event.target.value)} aria-label="Filter by country"><option>All markets</option><option>Zambia</option><option>Zimbabwe</option><option>Botswana</option><option>Namibia</option></select><ChevronDown size={15} /></label></div><div className="home-retailers">{filteredRetailers.length > 0 ? filteredRetailers.slice(0, 2).map((retailer) => retailer.mapUrl ? <a href={retailer.mapUrl} target="_blank" rel="noreferrer" key={retailer.name}><span>{retailer.name}</span><small>{retailer.country} · {retailer.type}</small><ArrowRight size={16} /></a> : <div className="home-retailers__item" key={retailer.name}><span>{retailer.name}</span><small>{retailer.country} · {retailer.type}</small></div>) : <p className="home-retailers__empty">No pours match that search. Try another city or venue.</p>}</div></div></section>
       </main>
       <SiteFooter />
+      <ClubModal isOpen={clubModalOpen} onClose={() => setClubModalOpen(false)} />
     </div>
   );
 }

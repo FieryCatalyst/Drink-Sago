@@ -80,10 +80,11 @@ export const WordsPullUpMultiStyle = ({ segments, className = "", style }: Words
 };
 
 const navItems = [
-  { label: "Collection", href: "#collection" },
+  { label: "Our Products", href: "/collection" },
   { label: "Cocktails", href: "/cocktails" },
-  { label: "Our story", href: "#story" },
-  { label: "Find Sago", href: "#shop" },
+  { label: "Our Story", href: "/about" },
+  { label: "Promotions", href: "/promotions" },
+  { label: "Join the SAGO Club", href: "/club" },
 ];
 
 const PrismaHero = () => {

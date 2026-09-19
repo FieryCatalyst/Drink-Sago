@@ -22,10 +22,12 @@ export default function SiteFooter() {
           </Link>
           <p>Oak whisky<br />for bolder conversations.</p>
           <div className="footer-links">
-            <Link href="/collection">Collection</Link>
+            <Link href="/collection">Our Products</Link>
             <Link href="/cocktails">Cocktails</Link>
-            <Link href="/about">Our story</Link>
-            <Link href="/#shop">Find Sago</Link>
+            <Link href="/about">Our Story</Link>
+            <Link href="/promotions">Promotions</Link>
+            <Link href="/club">Join the SAGO Club</Link>
+            <Link href="/#shop">Shop nearby</Link>
           </div>
         </div>
         <div className="footer-social">

@@ -63,7 +63,7 @@ export default function CollectionPage() {
     <main className="collection-page">
       <header className="collection-header">
         <Link className="brand display" href="/" aria-label="Sago home"><Image className="sago-logo" src="/assets/LOGO.png" alt="Sago" width={48} height={48} /></Link>
-        <nav aria-label="Collection navigation"><Link href="/">Home</Link><a className="active" href="#range">Collection</a><Link href="/cocktails">Cocktails</Link><Link href="/#shop">Find Sago</Link></nav>
+        <nav aria-label="Collection navigation"><Link href="/">Home</Link><Link href="/collection">Our Products</Link><Link href="/cocktails">Cocktails</Link><Link href="/promotions">Promotions</Link><Link href="/club">Join the SAGO Club</Link><Link href="/#shop">Shop nearby</Link></nav>
         <Link className="collection-header__cta" href="/#shop">Shop nearby <ArrowRight size={14} /></Link>
       </header>
 
