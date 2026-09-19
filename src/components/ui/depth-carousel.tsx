@@ -49,7 +49,7 @@ export default function DepthCarousel({
   visibleCards = 4,
   falloff = 0.14,
   blur = 3,
-  duration = 620,
+  duration = 760,
   ease = "power3.out",
   autoplay = false,
   autoplayDelay = 3200,

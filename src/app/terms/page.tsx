@@ -1,0 +1,12 @@
+import LegalPage from "@/components/legal-page";
+
+export default function TermsPage() {
+  return <LegalPage title="Terms and Conditions" intro="These terms govern your use of the Sago website. They are a plain-language starting point and require review for the country where the responsible business operates." sections={[
+    { title: "Using this site", children: <><p>You may use this site for lawful, personal information and browsing. You must meet the legal drinking age where you live. Do not use the site to break the law, interfere with its operation, or misrepresent your identity.</p></> },
+    { title: "Content and availability", children: <><p>We aim to keep descriptions, product details, recipes, retailer information and availability accurate, but content may change and retailers may sell out or close. Confirm product, age and local alcohol rules with the retailer before purchase.</p><p>Recipes are informational. Take care with allergens, hot liquids, glassware and responsible alcohol consumption. Never drink and drive.</p></> },
+    { title: "Intellectual property", children: <><p>Unless stated otherwise, the Sago name, logo, written content and site design belong to Sago or its licensors. You may view and share links to the site for lawful purposes, but do not copy, modify, sell or commercially reuse materials without written permission.</p><p>All campaign images and artwork must have documented ownership or licences before publication. Contact us if you believe material is used improperly.</p></> },
+    { title: "External links", children: <><p>The site may refer to retailers or other services. We do not control their content, availability, privacy practices or sales terms. A retailer, not this informational website, handles any purchase unless a separate checkout is clearly provided.</p></> },
+    { title: "Disclaimers and liability", children: <><p>The site is provided for general information and may not always be uninterrupted or error-free. To the extent permitted by applicable law, Sago is not responsible for indirect loss arising from use of the site or reliance on retailer information. Nothing in these terms limits rights that cannot legally be limited.</p></> },
+    { title: "Contact and changes", children: <><p>The responsible legal entity, registered address and governing law have not been supplied and must be inserted after local legal review. We may update these terms when the site or its services change.</p></> },
+  ]} />;
+}

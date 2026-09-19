@@ -101,7 +101,7 @@ const PrismaHero = () => {
       <div className="sago-prisma-hero__texture" />
 
       <nav className="sago-prisma-hero__nav" aria-label="Primary navigation">
-        <a href="#top" className="sago-prisma-hero__brand display" aria-label="Sago home"><Image className="sago-logo sago-logo--hero" src="/assets/sago-logo.svg" alt="Sago" width={48} height={48} /></a>
+        <a href="#top" className="sago-prisma-hero__brand display" aria-label="Sago home"><Image className="sago-logo sago-logo--hero" src="/assets/LOGO.png" alt="Sago" width={48} height={48} /></a>
         <div className="sago-prisma-hero__links">
           {navItems.map((item) => (
             <a key={item.label} href={item.href}>{item.label}</a>
@@ -120,7 +120,7 @@ const PrismaHero = () => {
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.5, ease: [0.16, 1, 0.3, 1] }}
           >
-            Gold Reserve is a premium oak whisky for people who move with intention. Rooted in nature, distilled for bolder conversations.
+            Gold Reserve is an oak whisky for people who move with intention. Made for bolder conversations.
           </motion.p>
           <motion.div
             initial={{ y: 20, opacity: 0 }}

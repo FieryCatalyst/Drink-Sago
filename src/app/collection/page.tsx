@@ -8,7 +8,7 @@ import { useState } from "react";
 const products = [
   {
     name: "Gold Reserve Whisky",
-    type: "Premium oak whisky",
+    type: "Oak whisky",
     abv: "42.8% ABV",
     size: "750 ml",
     image: "/assets/5.png",
@@ -36,12 +36,12 @@ const products = [
   },
   {
     name: "Oak & Spirit",
-    type: "Limited expression",
+    type: "Oak expression",
     abv: "42.8% ABV",
     size: "750 ml",
     image: "/assets/3.png",
     description: "A deeper expression with dark grain, polished spice and a sense of place.",
-    story: "Oak & Spirit leans into the darker side of the Sago palette. It is a limited expression shaped by deeper rest and a more pronounced relationship with the barrel.",
+    story: "Oak & Spirit leans into the darker side of the Sago palette, with a pronounced relationship with the barrel.",
     nose: "Cocoa nib, dried fig and cedar smoke.",
     palate: "Dark honey, toasted grain and black pepper.",
     finish: "Deep, dry and persistent with a gentle mineral note.",
@@ -62,7 +62,7 @@ export default function CollectionPage() {
   return (
     <main className="collection-page">
       <header className="collection-header">
-        <Link className="brand display" href="/" aria-label="Sago home"><Image className="sago-logo" src="/assets/sago-logo.svg" alt="Sago" width={48} height={48} /></Link>
+        <Link className="brand display" href="/" aria-label="Sago home"><Image className="sago-logo" src="/assets/LOGO.png" alt="Sago" width={48} height={48} /></Link>
         <nav aria-label="Collection navigation"><Link href="/">Home</Link><a className="active" href="#range">Collection</a><Link href="/cocktails">Cocktails</Link><Link href="/#shop">Find Sago</Link></nav>
         <Link className="collection-header__cta" href="/#shop">Shop nearby <ArrowRight size={14} /></Link>
       </header>

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Cormorant_Garamond, Montserrat } from "next/font/google";
-import { Analytics } from "@vercel/analytics/react";
 import AgeGate from "@/components/age-gate";
+import AnalyticsConsent from "@/components/analytics-consent";
 import "./globals.css";
 
 const displayFont = Cormorant_Garamond({
@@ -16,12 +16,12 @@ const bodyFont = Montserrat({
 
 export const metadata: Metadata = {
   title: "Sago | Gold Reserve Whisky",
-  description: "A premium oak whisky for bolder conversations.",
+  description: "An oak whisky for bolder conversations.",
   metadataBase: new URL("https://sago.world"),
   alternates: { canonical: "/" },
   openGraph: {
     title: "Sago | Gold Reserve Whisky",
-    description: "A premium oak whisky for bolder conversations.",
+    description: "An oak whisky for bolder conversations.",
     type: "website",
   },
 };
@@ -32,7 +32,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${displayFont.variable} ${bodyFont.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col"><AgeGate>{children}</AgeGate><Analytics /></body>
+      <body className="min-h-full flex flex-col"><AgeGate>{children}<AnalyticsConsent /></AgeGate></body>
     </html>
   );
 }
