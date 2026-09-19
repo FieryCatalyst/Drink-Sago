@@ -68,10 +68,16 @@ export default function DepthCarousel({
   const tweenRef = useRef<gsap.core.Tween | null>(null);
   const dragRef = useRef<{ startX: number; startPosition: number; moved: boolean } | null>(null);
   const [active, setActive] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   const reducedMotion = useRef(false);
+  const isVisible = useRef(true);
 
   const layout = useCallback((position: number) => {
     const direction = tiltDirection === "left" ? -1 : 1;
+    const activeDepth = isMobile ? depth * 0.6 : depth;
+    const activeSpread = isMobile ? spread * 0.72 : spread;
+    const activeVisibleCards = isMobile ? Math.min(2, visibleCards) : visibleCards;
+    const activeBlur = isMobile ? 0 : blur;
     data.forEach((_, index) => {
       const card = cardRefs.current[index];
       if (!card) return;
@@ -81,12 +87,12 @@ export default function DepthCarousel({
         if (distance > data.length / 2) distance -= data.length;
       }
       const behind = Math.max(0, distance);
-      const visible = Math.abs(distance) <= visibleCards + 0.5;
+      const visible = Math.abs(distance) <= activeVisibleCards + 0.5;
       const opacity = visible ? (distance < 0 ? Math.max(0, 1 + distance) : 1) : 0;
       const brightness = Math.max(0.15, 1 - behind * falloff);
-      const blurAmount = visible ? Math.min(blur, (behind / Math.max(1, visibleCards)) * blur) : 0;
-      const x = direction * spread * distance;
-      const z = -depth * distance;
+      const blurAmount = visible ? Math.min(activeBlur, (behind / Math.max(1, activeVisibleCards)) * activeBlur) : 0;
+      const x = direction * activeSpread * distance;
+      const z = -activeDepth * distance;
       const rotateY = direction * tilt * clamp(distance, 0, 1);
       card.style.transform = `translate3d(calc(-50% + ${x.toFixed(2)}px), -50%, ${z.toFixed(2)}px) rotateY(${rotateY.toFixed(2)}deg)`;
       card.style.opacity = opacity.toFixed(3);
@@ -95,7 +101,7 @@ export default function DepthCarousel({
       card.style.pointerEvents = visible && opacity > 0.05 ? "auto" : "none";
       if (overlayRefs.current[index]) overlayRefs.current[index]!.style.opacity = clamp(behind * falloff * 1.25, 0, 0.86).toFixed(3);
     });
-  }, [blur, data, depth, falloff, loop, spread, tilt, tiltDirection, visibleCards]);
+  }, [blur, data, depth, falloff, isMobile, loop, spread, tilt, tiltDirection, visibleCards]);
 
   const focus = useCallback((rawIndex: number, animate = true) => {
     if (!data.length) return;
@@ -122,18 +128,39 @@ export default function DepthCarousel({
   }, [data.length, duration, ease, items, layout, loop, onChange]);
 
   useEffect(() => {
-    reducedMotion.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const mobileQuery = window.matchMedia("(max-width: 800px)");
+    const updateViewport = () => {
+      reducedMotion.current = motionQuery.matches;
+      setIsMobile(mobileQuery.matches);
+    };
+    updateViewport();
+    motionQuery.addEventListener("change", updateViewport);
+    mobileQuery.addEventListener("change", updateViewport);
     layout(positionRef.current);
     const observer = new ResizeObserver(() => layout(positionRef.current));
     if (rootRef.current) observer.observe(rootRef.current);
-    return () => { observer.disconnect(); tweenRef.current?.kill(); };
+    const visibilityObserver = new IntersectionObserver(([entry]) => {
+      isVisible.current = entry.isIntersecting;
+      if (!entry.isIntersecting) tweenRef.current?.kill();
+    }, { rootMargin: "120px" });
+    if (rootRef.current) visibilityObserver.observe(rootRef.current);
+    return () => {
+      observer.disconnect();
+      visibilityObserver.disconnect();
+      motionQuery.removeEventListener("change", updateViewport);
+      mobileQuery.removeEventListener("change", updateViewport);
+      tweenRef.current?.kill();
+    };
   }, [layout]);
 
   useEffect(() => {
-    if (!autoplay || reducedMotion.current || data.length < 2) return;
-    const timer = window.setInterval(() => focus(focusRef.current + 1), Math.max(autoplayDelay, 600));
+    if (!autoplay || reducedMotion.current || isMobile || data.length < 2) return;
+    const timer = window.setInterval(() => {
+      if (isVisible.current) focus(focusRef.current + 1);
+    }, Math.max(autoplayDelay, 600));
     return () => window.clearInterval(timer);
-  }, [autoplay, autoplayDelay, data.length, focus]);
+  }, [autoplay, autoplayDelay, data.length, focus, isMobile]);
 
   const moveBy = (step: number) => focus(focusRef.current + step);
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -157,7 +184,7 @@ export default function DepthCarousel({
     if (moved) focus(Math.round(positionRef.current));
   };
 
-  return <div ref={rootRef} className={`depth-carousel ${className}`.trim()} style={{ "--dc-perspective": `${perspective}px` } as React.CSSProperties} role="group" aria-roledescription="carousel" aria-label="Sago collection gallery" tabIndex={0} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onKeyDown={(event) => { if (event.key === "ArrowLeft") moveBy(-1); if (event.key === "ArrowRight") moveBy(1); }}>
+  return <div ref={rootRef} className={`depth-carousel${isMobile ? " depth-carousel--mobile" : ""} ${className}`.trim()} style={{ "--dc-perspective": `${perspective}px` } as React.CSSProperties} role="group" aria-roledescription="carousel" aria-label="Sago collection gallery" tabIndex={0} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onKeyDown={(event) => { if (event.key === "ArrowLeft") moveBy(-1); if (event.key === "ArrowRight") moveBy(1); }}>
     <div className="depth-carousel__stage">
       {data.map((item, index) => <div key={`${item.image}-${index}`} className="depth-carousel__card" ref={(element) => { cardRefs.current[index] = element; }} style={{ width: cardWidth, height: cardHeight, borderRadius: radius }} aria-label={`${index + 1} of ${data.length}`} aria-hidden={active !== index} onClick={() => !dragRef.current?.moved && focus(index)}><Image className="depth-carousel__img" src={item.image} alt={item.alt ?? ""} width={cardWidth} height={cardHeight} draggable={false} /><span className="depth-carousel__tint" ref={(element) => { overlayRefs.current[index] = element; }} style={{ background: tint }} /></div>)}
     </div>
