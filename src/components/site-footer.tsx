@@ -7,10 +7,19 @@ import { FaFacebookF, FaInstagram, FaTiktok } from "react-icons/fa6";
 import LogoLoop, { type LogoItem } from "@/components/ui/logo-loop";
 
 const socialLinks: LogoItem[] = [
-  { href: "https://www.instagram.com/sago.world", ariaLabel: "Sago on Instagram", node: <FaInstagram aria-hidden="true" /> },
-  { href: "https://www.tiktok.com/@sago.world", ariaLabel: "Sago on TikTok", node: <FaTiktok aria-hidden="true" /> },
-  { href: "https://www.facebook.com/sago.world", ariaLabel: "Sago on Facebook", node: <FaFacebookF aria-hidden="true" /> },
+  { href: "https://www.instagram.com/sagowhisky?stkn=MXNiZWszb3kyZWJ4cw==", ariaLabel: "Sago on Instagram", node: <FaInstagram aria-hidden="true" /> },
+  { href: "#", ariaLabel: "Sago on TikTok (coming soon)", node: <FaTiktok aria-hidden="true" /> },
+  { href: "#", ariaLabel: "Sago on Facebook (coming soon)", node: <FaFacebookF aria-hidden="true" /> },
 ];
+
+const AGE_GATE_KEY = "sago-age-verified";
+
+function resetAgeGate() {
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(AGE_GATE_KEY);
+    window.location.reload();
+  }
+}
 
 export default function SiteFooter() {
   return (
@@ -20,14 +29,13 @@ export default function SiteFooter() {
           <Link className="brand display" href="/" aria-label="Sago home">
             <Image className="sago-logo sago-logo--footer" src="/assets/LOGO.png" alt="Sago" width={64} height={64} />
           </Link>
-          <p>Oak whisky<br />for bolder conversations.</p>
+          <p>The House of<br />Premium Spirits.</p>
           <div className="footer-links">
-            <Link href="/collection">Our Products</Link>
-            <Link href="/cocktails">Cocktails</Link>
-            <Link href="/about">Our Story</Link>
+            <Link href="/">Home</Link>
+            <Link href="/about">Our Philosophy</Link>
+            <Link href="/collection">SAGO Products</Link>
+            <Link href="/cocktails">Cocktail Recipes</Link>
             <Link href="/promotions">Promotions</Link>
-            <Link href="/club">Join the SAGO Club</Link>
-            <Link href="/#shop">Shop nearby</Link>
           </div>
         </div>
         <div className="footer-social">
@@ -50,9 +58,22 @@ export default function SiteFooter() {
         </form>
       </div>
       <div className="footer-bottom">
-        <span>© 2026 Sago Gold Reserve Whisky</span>
+        <span>© 2026 SAGO — The House of Premium Spirits</span>
         <span>Drink responsibly. Please enjoy Sago in moderation.</span>
-        <span><Link href="/privacy">Privacy</Link> · <Link href="/cookies">Cookies</Link> · <Link href="/terms">Terms</Link> · <Link href="/refunds">Refunds</Link> · <Link href="/accessibility">Accessibility</Link></span>
+        <span>
+          <Link href="/privacy">Privacy</Link> · <Link href="/cookies">Cookies</Link> · <Link href="/terms">Terms</Link> · <Link href="/refunds">Refunds</Link> · <Link href="/accessibility">Accessibility</Link>
+        </span>
+      </div>
+      {/* Age-gate preview — allows client to review and request edits for the age gate page */}
+      <div className="footer-age-preview">
+        <button
+          type="button"
+          onClick={resetAgeGate}
+          aria-label="Reset age verification to preview age gate"
+          title="Clears your age verification so you can review and edit the age gate page"
+        >
+          Preview age gate →
+        </button>
       </div>
     </footer>
   );

@@ -1,27 +1,31 @@
 import type { Metadata } from "next";
-import { Cormorant_Garamond, Montserrat } from "next/font/google";
+import { Asul, Montserrat } from "next/font/google";
 import AgeGate from "@/components/age-gate";
 import AnalyticsConsent from "@/components/analytics-consent";
 import "./globals.css";
 
-const displayFont = Cormorant_Garamond({
-  variable: "--font-display",
-  subsets: ["latin"],
-});
-
-const bodyFont = Montserrat({
+// Primary font: Asul (normal + bold) — per client brief
+const bodyFont = Asul({
   variable: "--font-body",
   subsets: ["latin"],
+  weight: ["400", "700"],
+});
+
+// Complementary bold font: Montserrat — used for eyebrows, labels, accents
+const displayFont = Montserrat({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "Sago | Gold Reserve Whisky",
-  description: "An oak whisky for bolder conversations.",
+  title: "SAGO | The House of Premium Spirits",
+  description: "Celebrate every moment with SAGO — The House of Premium Spirits.",
   metadataBase: new URL("https://sago.world"),
   alternates: { canonical: "/" },
   openGraph: {
-    title: "Sago | Gold Reserve Whisky",
-    description: "An oak whisky for bolder conversations.",
+    title: "SAGO | The House of Premium Spirits",
+    description: "Celebrate every moment with SAGO — The House of Premium Spirits.",
     type: "website",
   },
 };
@@ -30,9 +34,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${displayFont.variable} ${bodyFont.variable} h-full antialiased`}
+      className={`${bodyFont.variable} ${displayFont.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col"><AgeGate>{children}<AnalyticsConsent /></AgeGate></body>
+      <body className="min-h-full flex flex-col">
+        <AgeGate>
+          {children}
+          <AnalyticsConsent />
+        </AgeGate>
+      </body>
     </html>
   );
 }

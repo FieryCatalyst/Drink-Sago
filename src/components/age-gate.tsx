@@ -81,7 +81,7 @@ export default function AgeGate({ children }: { children: React.ReactNode }) {
       </div>
       <div className="age-gate__panel">
         <Image
-          src="/assets/LOGO.png"
+          src="/assets/Sago Logo.png"
           alt="Sago"
           width={58}
           height={58}
