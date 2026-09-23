@@ -133,183 +133,100 @@ export default function EditorialCocktailCarousel({
   const router = useRouter();
   const trackRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLElement | null)[]>([]);
-  // Start centered in the middle copy (copy 2: index BASE_COUNT * 2 + 2)
-  const [featuredIndex, setFeaturedIndex] = useState(BASE_COUNT * 2 + 2);
+  // Start centered in the middle copy
+  const [featuredIndex, setFeaturedIndex] = useState(BASE_COUNT * 2);
+  const touchStartXRef = useRef(0);
 
-  // Drag interaction state
-  const isDownRef = useRef(false);
-  const startXRef = useRef(0);
-  const scrollLeftRef = useRef(0);
-  const hasMovedRef = useRef(false);
-  const isInternalScrollRef = useRef(false);
-
-  // Initialize track position in the middle copy
-  useEffect(() => {
+  const scrollToIndex = (targetIdx: number, smooth = true) => {
     const el = trackRef.current;
-    if (!el) return;
+    const card = cardRefs.current[targetIdx];
+    if (!el || !card) return;
 
-    const initialIdx = BASE_COUNT * 2 + 2;
-    const card = cardRefs.current[initialIdx];
-    if (card) {
-      const cardCenter = card.offsetLeft + card.clientWidth / 2;
-      el.scrollLeft = cardCenter - el.clientWidth * 0.45;
-      setFeaturedIndex(initialIdx);
-    }
+    setFeaturedIndex(targetIdx);
+    const cardCenter = card.offsetLeft + card.clientWidth / 2;
+    const targetScroll = cardCenter - el.clientWidth / 2;
+
+    el.scrollTo({
+      left: Math.max(0, targetScroll),
+      behavior: smooth ? "smooth" : "auto",
+    });
+  };
+
+  // Initialize track position centered on middle copy
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      scrollToIndex(BASE_COUNT * 2, false);
+    }, 50);
+    return () => clearTimeout(timer);
   }, []);
 
   // Synchronize with external active recipe if provided
   useEffect(() => {
     if (typeof activeRecipeIndex === "number" && activeRecipeIndex >= 0) {
       const targetIdx = BASE_COUNT * 2 + (activeRecipeIndex % BASE_COUNT);
-      setFeaturedIndex(targetIdx);
-      scrollToCard(targetIdx);
+      scrollToIndex(targetIdx, true);
     }
   }, [activeRecipeIndex]);
 
-  // Normalize scroll position for infinite continuous wrapping
-  const normalizeInfiniteScroll = () => {
-    const el = trackRef.current;
-    if (!el) return;
-    const card0 = cardRefs.current[0];
-    const cardN = cardRefs.current[BASE_COUNT];
-    if (!card0 || !cardN) return;
-
-    const oneSetWidth = cardN.offsetLeft - card0.offsetLeft;
-    if (oneSetWidth <= 0) return;
-
-    // If scrolled past 3.5 sets, shift backward by 1 full set
-    if (el.scrollLeft >= oneSetWidth * 3.5) {
-      el.scrollLeft -= oneSetWidth;
-    }
-    // If scrolled before 1.2 sets, shift forward by 1 full set
-    else if (el.scrollLeft <= oneSetWidth * 1.2) {
-      el.scrollLeft += oneSetWidth;
-    }
-  };
-
-  // Dynamically update featured cocktail based on scroll position
-  const checkScroll = () => {
-    const el = trackRef.current;
-    if (!el) return;
-
-    normalizeInfiniteScroll();
-
-    // Find the card closest to the primary viewing focus
-    const viewportCenter = el.scrollLeft + el.clientWidth * 0.45;
-    let closestIdx = 0;
-    let minDistance = Infinity;
-
-    cardRefs.current.forEach((card, idx) => {
-      if (!card) return;
-      const cardCenter = card.offsetLeft + card.clientWidth / 2;
-      const dist = Math.abs(cardCenter - viewportCenter);
-      if (dist < minDistance) {
-        minDistance = dist;
-        closestIdx = idx;
-      }
-    });
-
-    setFeaturedIndex(closestIdx);
-  };
-
+  // Recenter current card on window resize without animation
   useEffect(() => {
-    const el = trackRef.current;
-    if (!el) return;
-    checkScroll();
-    const handleScroll = () => {
-      if (isInternalScrollRef.current) return;
-      window.requestAnimationFrame(checkScroll);
+    const handleResize = () => {
+      scrollToIndex(featuredIndex, false);
     };
-    el.addEventListener("scroll", handleScroll, { passive: true });
-    window.addEventListener("resize", checkScroll);
-    return () => {
-      el.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", checkScroll);
-    };
-  }, []);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [featuredIndex]);
 
-  const scrollToCard = (targetIdx: number) => {
-    const el = trackRef.current;
-    const card = cardRefs.current[targetIdx];
-    if (!el || !card) return;
+  // Arrow click handler: moves exactly 1 card per click
+  const scrollByDirection = (direction: "left" | "right") => {
+    const nextIdx = direction === "left" ? featuredIndex - 1 : featuredIndex + 1;
+    scrollToIndex(nextIdx, true);
 
-    isInternalScrollRef.current = true;
-    const cardCenter = card.offsetLeft + card.clientWidth / 2;
-    const targetScroll = cardCenter - el.clientWidth * 0.45;
-
-    el.scrollTo({
-      left: Math.max(0, targetScroll),
-      behavior: "smooth",
-    });
-    setFeaturedIndex(targetIdx);
-
+    // Silent seamless wrap normalization
     setTimeout(() => {
-      isInternalScrollRef.current = false;
-      normalizeInfiniteScroll();
-      checkScroll();
+      const el = trackRef.current;
+      const card0 = cardRefs.current[0];
+      const cardN = cardRefs.current[BASE_COUNT];
+      if (!el || !card0 || !cardN) return;
+
+      const oneSetWidth = cardN.offsetLeft - card0.offsetLeft;
+      if (oneSetWidth <= 0) return;
+
+      if (nextIdx >= BASE_COUNT * 3.5) {
+        el.scrollTo({ left: el.scrollLeft - oneSetWidth, behavior: "auto" });
+        setFeaturedIndex(nextIdx - BASE_COUNT);
+      } else if (nextIdx <= BASE_COUNT * 1.5) {
+        el.scrollTo({ left: el.scrollLeft + oneSetWidth, behavior: "auto" });
+        setFeaturedIndex(nextIdx + BASE_COUNT);
+      }
     }, 450);
   };
 
-  const scrollByDirection = (direction: "left" | "right") => {
-    let nextIdx = direction === "left" ? featuredIndex - 1 : featuredIndex + 1;
-    const el = trackRef.current;
-    const card0 = cardRefs.current[0];
-    const cardN = cardRefs.current[BASE_COUNT];
-    
-    // Seamless infinite wrap: keep the active window centered in the middle copies
-    if (el && card0 && cardN) {
-      const oneSetWidth = cardN.offsetLeft - card0.offsetLeft;
-      if (oneSetWidth > 0) {
-        if (nextIdx >= BASE_COUNT * 3.5) {
-          el.scrollLeft -= oneSetWidth;
-          nextIdx -= BASE_COUNT;
-        } else if (nextIdx <= BASE_COUNT * 1.2) {
-          el.scrollLeft += oneSetWidth;
-          nextIdx += BASE_COUNT;
-        }
-      }
+  // Touch swipe support (discrete single-card step, not continuous scrolling)
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    if (deltaX < -45) {
+      scrollByDirection("right");
+    } else if (deltaX > 45) {
+      scrollByDirection("left");
     }
-    
-    scrollToCard(nextIdx);
-  };
-
-  // Pointer drag handlers
-  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    const el = trackRef.current;
-    if (!el) return;
-    isDownRef.current = true;
-    startXRef.current = e.pageX - el.offsetLeft;
-    scrollLeftRef.current = el.scrollLeft;
-    hasMovedRef.current = false;
-  };
-
-  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDownRef.current) return;
-    const el = trackRef.current;
-    if (!el) return;
-    const x = e.pageX - el.offsetLeft;
-    const walk = x - startXRef.current;
-    if (Math.abs(walk) > 6) {
-      hasMovedRef.current = true;
-    }
-    el.scrollLeft = scrollLeftRef.current - walk;
-  };
-
-  const onPointerUp = () => {
-    isDownRef.current = false;
-    setTimeout(() => {
-      hasMovedRef.current = false;
-    }, 60);
   };
 
   const handleCardClick = (index: number) => {
-    if (hasMovedRef.current) return;
-    scrollToCard(index);
-    const originalIndex = index % BASE_COUNT;
-    if (onSelectRecipe) {
-      onSelectRecipe(originalIndex);
+    if (index === featuredIndex) {
+      const originalIndex = index % BASE_COUNT;
+      if (onSelectRecipe) {
+        onSelectRecipe(originalIndex);
+      } else {
+        router.push(`/cocktails`);
+      }
     } else {
-      router.push(`/cocktails`);
+      // Move directly to the clicked card
+      scrollToIndex(index, true);
     }
   };
 
@@ -322,7 +239,7 @@ export default function EditorialCocktailCarousel({
         type="button"
         onClick={() => scrollByDirection("left")}
         className="editorial-carousel__side-arrow editorial-carousel__side-arrow--prev is-active"
-        aria-label="Scroll left to previous cocktail"
+        aria-label="Previous cocktail"
       >
         <ArrowLeft size={20} />
       </button>
@@ -331,7 +248,7 @@ export default function EditorialCocktailCarousel({
         type="button"
         onClick={() => scrollByDirection("right")}
         className="editorial-carousel__side-arrow editorial-carousel__side-arrow--next is-active"
-        aria-label="Scroll right to next cocktail"
+        aria-label="Next cocktail"
       >
         <ArrowRight size={20} />
       </button>
@@ -339,13 +256,11 @@ export default function EditorialCocktailCarousel({
       <div
         ref={trackRef}
         className="editorial-carousel-track"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerLeave={onPointerUp}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
         tabIndex={0}
         role="region"
-        aria-label="Sago signature cocktails continuous carousel"
+        aria-label="Sago signature cocktails carousel"
         onKeyDown={(e) => {
           if (e.key === "ArrowLeft") scrollByDirection("left");
           if (e.key === "ArrowRight") scrollByDirection("right");
