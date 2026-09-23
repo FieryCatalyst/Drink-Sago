@@ -36,6 +36,7 @@ export default function SiteFooter() {
             <Link href="/collection">SAGO Products</Link>
             <Link href="/cocktails">Cocktail Recipes</Link>
             <Link href="/promotions">Promotions</Link>
+            <Link href="/club">The SAGO Club</Link>
           </div>
         </div>
         <div className="footer-social">

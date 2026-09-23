@@ -111,7 +111,7 @@ export default function SiteNav({ onClub }: SiteNavProps) {
             </Link>
           ))}
 
-          {/* The SAGO Collective — modal on home, anchor elsewhere */}
+          {/* The SAGO Collective / SAGO Club */}
           {onClub ? (
             <a
               href="#"
@@ -123,9 +123,10 @@ export default function SiteNav({ onClub }: SiteNavProps) {
             </a>
           ) : (
             <Link
-              href="/#club"
+              href="/club"
               style={{ "--itemIndex": 5 } as React.CSSProperties}
               tabIndex={menuOpen ? 0 : -1}
+              className={isActive("/club") ? "site-nav__active" : undefined}
               onClick={close}
             >
               The SAGO Collective <span>06</span>

@@ -29,6 +29,7 @@ type DepthCarouselProps = {
   showControls?: boolean;
   showIndicators?: boolean;
   onChange?: (index: number, item: CarouselItem) => void;
+  onItemClick?: (index: number, item: CarouselItem) => void;
   className?: string;
 };
 
@@ -57,6 +58,7 @@ export default function DepthCarousel({
   showControls = true,
   showIndicators = true,
   onChange,
+  onItemClick,
   className = "",
 }: DepthCarouselProps) {
   const data = useMemo(() => items.map(normalize), [items]);
@@ -67,6 +69,7 @@ export default function DepthCarousel({
   const focusRef = useRef(0);
   const tweenRef = useRef<gsap.core.Tween | null>(null);
   const dragRef = useRef<{ startX: number; startPosition: number; moved: boolean } | null>(null);
+  const wasDraggedRef = useRef(false);
   const [active, setActive] = useState(0);
   const [isMobile, setIsMobile] = useState(false);
   const reducedMotion = useRef(false);
@@ -166,12 +169,16 @@ export default function DepthCarousel({
   const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     tweenRef.current?.kill();
     dragRef.current = { startX: event.clientX, startPosition: positionRef.current, moved: false };
+    wasDraggedRef.current = false;
   };
   const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
     if (!drag) return;
     const distance = event.clientX - drag.startX;
-    if (Math.abs(distance) > 5) drag.moved = true;
+    if (Math.abs(distance) > 5) {
+      drag.moved = true;
+      wasDraggedRef.current = true;
+    }
     if (drag.moved) {
       positionRef.current = drag.startPosition - distance / Math.max(cardWidth * 0.55, 40);
       layout(positionRef.current);
@@ -181,12 +188,17 @@ export default function DepthCarousel({
     if (!dragRef.current) return;
     const moved = dragRef.current.moved;
     dragRef.current = null;
-    if (moved) focus(Math.round(positionRef.current));
+    if (moved) {
+      focus(Math.round(positionRef.current));
+      setTimeout(() => { wasDraggedRef.current = false; }, 60);
+    } else {
+      wasDraggedRef.current = false;
+    }
   };
 
   return <div ref={rootRef} className={`depth-carousel${isMobile ? " depth-carousel--mobile" : ""} ${className}`.trim()} style={{ "--dc-perspective": `${perspective}px` } as React.CSSProperties} role="group" aria-roledescription="carousel" aria-label="Sago collection gallery" tabIndex={0} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp} onKeyDown={(event) => { if (event.key === "ArrowLeft") moveBy(-1); if (event.key === "ArrowRight") moveBy(1); }}>
     <div className="depth-carousel__stage">
-      {data.map((item, index) => <div key={`${item.image}-${index}`} className="depth-carousel__card" ref={(element) => { cardRefs.current[index] = element; }} style={{ width: cardWidth, height: cardHeight, borderRadius: radius }} aria-label={`${index + 1} of ${data.length}`} aria-hidden={active !== index} onClick={() => !dragRef.current?.moved && focus(index)}><Image className="depth-carousel__img" src={item.image} alt={item.alt ?? ""} width={cardWidth} height={cardHeight} draggable={false} /><span className="depth-carousel__tint" ref={(element) => { overlayRefs.current[index] = element; }} style={{ background: tint }} /></div>)}
+      {data.map((item, index) => <div key={`${item.image}-${index}`} className="depth-carousel__card" ref={(element) => { cardRefs.current[index] = element; }} style={{ width: cardWidth, height: cardHeight, borderRadius: radius }} aria-label={`${item.alt || `${index + 1} of ${data.length}`}`} aria-hidden={active !== index} onClick={() => { if (!wasDraggedRef.current) { focus(index); onItemClick?.(index, items[index]); } }}><Image className="depth-carousel__img" src={item.image} alt={item.alt ?? ""} width={cardWidth} height={cardHeight} draggable={false} /><span className="depth-carousel__tint" ref={(element) => { overlayRefs.current[index] = element; }} style={{ background: tint }} /></div>)}
     </div>
     {showControls && data.length > 1 && <><button type="button" className="depth-carousel__arrow depth-carousel__arrow--prev" aria-label="Previous collection image" onClick={() => moveBy(-1)}>‹</button><button type="button" className="depth-carousel__arrow depth-carousel__arrow--next" aria-label="Next collection image" onClick={() => moveBy(1)}>›</button></>}
     {showIndicators && data.length > 1 && <div className="depth-carousel__dots" role="tablist" aria-label="Collection images">{data.map((_, index) => <button key={index} type="button" role="tab" aria-selected={active === index} aria-label={`Go to collection image ${index + 1}`} className={`depth-carousel__dot${active === index ? " is-active" : ""}`} onClick={() => focus(index)} />)}</div>}

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import SiteFooter from "@/components/site-footer";
 import ClubModal from "@/components/club-modal";
 import SiteNav from "@/components/site-nav";
+import EditorialCocktailCarousel from "@/components/editorial-cocktail-carousel";
 
 const products = [
   { name: "Cinnamon Whisky", image: "/assets/3.png", comingSoon: false },
@@ -13,15 +14,7 @@ const products = [
   { name: "Agave Spirits", image: "", comingSoon: true },
 ];
 
-const cocktailImages = [
-  { src: "/assets/cocktail.png", alt: "Sago cocktail" },
-  { src: "/assets/cocktail2.png", alt: "Sago cocktail serve" },
-  { src: "/assets/cocktail3.png", alt: "Sago warm cocktail" },
-  { src: "/assets/cocktail4.png", alt: "Sago rocks serve" },
-  { src: "/assets/cocktail-highball.png", alt: "Sago highball" },
-  { src: "/assets/sago-blood-sour.png", alt: "Sago blood sour" },
-  { src: "/assets/sago-after-dark.png", alt: "Sago after dark" },
-];
+
 
 const retailers = [
   { name: "The Tasting Room", type: "Bar", country: "Zambia", address: "Plot 14, Kabulonga, Lusaka", hours: "Open until 23:00", mapUrl: "https://www.google.com/maps/search/?api=1&query=The+Tasting+Room+Kabulonga+Lusaka" },
@@ -34,7 +27,6 @@ export default function Home() {
   const [country, setCountry] = useState("All markets");
   const [query, setQuery] = useState("");
   const [clubModalOpen, setClubModalOpen] = useState(false);
-  const [cocktailSlide, setCocktailSlide] = useState(0);
 
   useEffect(() => {
     const handleHash = () => {
@@ -59,11 +51,6 @@ export default function Home() {
   const openClubModal = () => {
     setClubModalOpen(true);
   };
-
-  const prevSlide = () =>
-    setCocktailSlide((p) => (p - 1 + cocktailImages.length) % cocktailImages.length);
-  const nextSlide = () =>
-    setCocktailSlide((p) => (p + 1) % cocktailImages.length);
 
   return (
     <div className="sago-home">
@@ -183,7 +170,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── COCKTAIL RECIPES ───────────────────────────────────── */}
+        {/* ── COCKTAIL RECIPES (EDITORIAL HORIZONTAL CAROUSEL) ── */}
         <section className="home-cocktails" id="cocktails">
           <div className="home-section-head">
             <div>
@@ -192,48 +179,12 @@ export default function Home() {
                 Find Your Next<br /><em>Favourite Cocktail</em>
               </h2>
             </div>
+            <p className="heading-note">
+              Discover the different ways to enjoy Sago — crafted to raise a glass to every occasion.
+            </p>
           </div>
 
-          <div className="cocktail-slider">
-            <div
-              className="cocktail-slider__track"
-              style={{ transform: `translateX(-${cocktailSlide * 100}%)` }}
-            >
-              {cocktailImages.map((img, i) => (
-                <div className="cocktail-slider__slide" key={i}>
-                  <Image src={img.src} alt={img.alt} fill sizes="100vw" />
-                </div>
-              ))}
-            </div>
-
-            <button
-              className="cocktail-slider__prev"
-              onClick={prevSlide}
-              aria-label="Previous cocktail"
-            >
-              <ChevronLeft size={22} />
-            </button>
-            <button
-              className="cocktail-slider__next"
-              onClick={nextSlide}
-              aria-label="Next cocktail"
-            >
-              <ChevronRight size={22} />
-            </button>
-
-            <div className="cocktail-slider__dots" role="tablist" aria-label="Cocktail slides">
-              {cocktailImages.map((_, i) => (
-                <button
-                  key={i}
-                  role="tab"
-                  aria-selected={i === cocktailSlide}
-                  className={`cocktail-slider__dot${i === cocktailSlide ? " active" : ""}`}
-                  onClick={() => setCocktailSlide(i)}
-                  aria-label={`Go to cocktail ${i + 1}`}
-                />
-              ))}
-            </div>
-          </div>
+          <EditorialCocktailCarousel />
 
           <div className="home-cocktails__cta">
             <a className="home-button" href="/cocktails">
