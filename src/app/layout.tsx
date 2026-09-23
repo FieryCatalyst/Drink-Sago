@@ -23,10 +23,15 @@ export const metadata: Metadata = {
   description: "Celebrate every moment with SAGO — The House of Premium Spirits.",
   metadataBase: new URL("https://sago.world"),
   alternates: { canonical: "/" },
+  icons: {
+    icon: "/assets/Sago Logo.png",
+    apple: "/assets/Sago Logo.png",
+  },
   openGraph: {
     title: "SAGO | The House of Premium Spirits",
     description: "Celebrate every moment with SAGO — The House of Premium Spirits.",
     type: "website",
+    images: ["/assets/Sago Logo.png"],
   },
 };
 

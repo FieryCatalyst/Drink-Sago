@@ -102,7 +102,7 @@ const PrismaHero = () => {
       <div className="sago-prisma-hero__texture" />
 
       <nav className="sago-prisma-hero__nav" aria-label="Primary navigation">
-        <a href="#top" className="sago-prisma-hero__brand display" aria-label="Sago home"><Image className="sago-logo sago-logo--hero" src="/assets/LOGO.png" alt="Sago" width={48} height={48} /></a>
+        <a href="#top" className="sago-prisma-hero__brand display" aria-label="Sago home"><Image className="sago-logo sago-logo--hero" src="/assets/Sago Logo.png" alt="Sago" width={48} height={48} /></a>
         <div className="sago-prisma-hero__links">
           {navItems.map((item) => (
             <a key={item.label} href={item.href}>{item.label}</a>

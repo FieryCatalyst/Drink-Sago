@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion, useInView, useReducedMotion } from "framer-motion";
 import { ArrowDown, ArrowRight, MapPin } from "lucide-react";
 import { useRef, useState } from "react";
+import SiteNav from "@/components/site-nav";
 
 const values = [
   { number: "01", title: "Craftsmanship", copy: "We give grain, oak and time the attention they deserve." },
@@ -48,7 +49,7 @@ export default function AboutPage() {
 
   return (
     <main className="about-page">
-      <header className="about-header"><Link className="brand display" href="/" aria-label="Sago home"><Image className="sago-logo" src="/assets/LOGO.png" alt="Sago" width={48} height={48} /></Link><nav aria-label="About navigation"><Link href="/">Home</Link><Link href="/collection">Our Products</Link><Link href="/cocktails">Cocktails</Link><Link href="/promotions">Promotions</Link><Link href="/club">Join the SAGO Club</Link><Link href="/#shop">Shop nearby</Link></nav><Link className="about-header__cta" href="/#shop">Shop nearby <ArrowRight size={14} /></Link></header>
+      <SiteNav />
 
       <section className="about-hero"><Image src="/assets/8.png" alt="Sago bottle in a warm, considered setting" fill priority sizes="100vw" className="about-hero__image" /><div className="about-hero__shade" /><motion.div className="about-hero__glow" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 2 }} /><div className="about-hero__copy"><motion.p className="eyebrow" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .8, delay: .3 }}>About Sago · Good spirits, brighter tomorrows</motion.p><motion.h1 className="display" initial={{ opacity: 0, y: 38 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: .45, ease: [0.16, 1, 0.3, 1] }}>A spirit with<br /><em>somewhere to go.</em></motion.h1><motion.p className="about-hero__lede" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: .9 }}>Rooted in nature. Crafted for the conversations that move us forward.</motion.p><a className="about-hero__scroll" href="#story">Begin the story <ArrowDown size={16} /></a></div></section>
 

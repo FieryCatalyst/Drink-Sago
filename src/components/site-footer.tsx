@@ -27,7 +27,7 @@ export default function SiteFooter() {
       <div className="footer-top">
         <div>
           <Link className="brand display" href="/" aria-label="Sago home">
-            <Image className="sago-logo sago-logo--footer" src="/assets/LOGO.png" alt="Sago" width={64} height={64} />
+            <Image className="sago-logo sago-logo--footer" src="/assets/Sago Logo.png" alt="Sago" width={64} height={64} />
           </Link>
           <p>The House of<br />Premium Spirits.</p>
           <div className="footer-links">

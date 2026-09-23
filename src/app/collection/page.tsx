@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowDown, ArrowRight, ChevronDown } from "lucide-react";
 import { useState } from "react";
+import SiteNav from "@/components/site-nav";
 
 type Product = {
   name: string;
@@ -64,21 +65,7 @@ export default function CollectionPage() {
 
   return (
     <main className="collection-page">
-      <header className="collection-header">
-        <Link className="brand display" href="/" aria-label="Sago home">
-          <Image className="sago-logo" src="/assets/LOGO.png" alt="Sago" width={48} height={48} />
-        </Link>
-        <nav aria-label="Collection navigation">
-          <Link href="/">Home</Link>
-          <Link href="/about">Our Philosophy</Link>
-          <Link href="/collection">SAGO Products</Link>
-          <Link href="/cocktails">Cocktail Recipes</Link>
-          <Link href="/promotions">Promotions</Link>
-        </nav>
-        <Link className="collection-header__cta" href="/cocktails">
-          Cocktail Recipes <ArrowRight size={14} />
-        </Link>
-      </header>
+      <SiteNav />
 
       {/* HERO */}
       <section className="collection-hero">

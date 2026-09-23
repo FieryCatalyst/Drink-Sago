@@ -5,6 +5,9 @@ import Link from "next/link";
 import { ArrowRight, Clock3 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useMemo, useState } from "react";
+import SiteNav from "@/components/site-nav";
+import SiteFooter from "@/components/site-footer";
+import DepthCarousel from "@/components/ui/depth-carousel";
 
 type Cocktail = {
   name: string;
@@ -42,6 +45,21 @@ const recipes: Cocktail[] = [
   { name: "Sago Blackout", category: "Mixed whisky", product: "Sago Original + Cinnamon Whisky", time: "7 min", difficulty: "★★★☆☆", glass: "Nick & Nora", ice: "No ice", image: "/assets/8.png", ingredients: ["30 ml Sago Original Whisky", "20 ml Sago Cinnamon Whisky", "20 ml sweet vermouth", "10 ml coffee liqueur", "2 dashes chocolate bitters", "Orange peel", "Ice"], equipment: ["Mixing glass", "Bar spoon", "Nick & Nora"], method: ["Add both whiskies, vermouth, coffee liqueur and bitters to a mixing glass.", "Fill with ice.", "Stir for 20–25 seconds.", "Strain into a chilled coupe or Nick & Nora."], garnish: "Express an orange peel over the surface and discard it.", profile: "Coffee, vermouth, chocolate, vanilla, cinnamon, oak.", style: "Dark, rich & sophisticated", occasion: "The final chapter of the evening." },
 ];
 
+const cocktailGallery = [
+  { image: "/assets/cocktail-highball.png", alt: "The Sago Highball" },
+  { image: "/assets/sago-blood-sour.png", alt: "Sago-Blood Sour" },
+  { image: "/assets/cocktail.png", alt: "Sago Gold Rush" },
+  { image: "/assets/sago-after-dark.png", alt: "Sago After Dark" },
+  { image: "/assets/SAGO RUBY JWEL solid clr.png", alt: "Sago’s Ruby Jewel" },
+  { image: "/assets/cocktail4.png", alt: "Apple of Sago’s Eye" },
+  { image: "/assets/cocktail2.png", alt: "Silky Sago Route" },
+  { image: "/assets/Cheeky Peach Sago Solid clrs.png", alt: "Cheeky-Peachy Sago" },
+  { image: "/assets/SAGOS PLUM AFAIR solid clr.png", alt: "Sago’s Plum Affair" },
+  { image: "/assets/cocktail3.png", alt: "Sago Golden Hour" },
+  { image: "/assets/SAGO Toddy.png", alt: "Sago Toddy" },
+  { image: "/assets/SAGO X SAGO.png", alt: "Sago x Sago" },
+];
+
 const categories = ["All recipes", "Oak whisky", "Cinnamon whisky", "Hot & comforting", "Mixed whisky"];
 
 export default function CocktailsPage() {
@@ -57,13 +75,118 @@ export default function CocktailsPage() {
     window.requestAnimationFrame(() => document.getElementById("recipe-detail")?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" }));
   };
 
-  return <main className="cocktails-page">
-    <header className="cocktails-header"><Link className="brand display" href="/" aria-label="Sago home"><Image className="sago-logo" src="/assets/LOGO.png" alt="Sago" width={48} height={48} /></Link><nav aria-label="Cocktails navigation"><Link href="/">Home</Link><Link href="/about">Our Philosophy</Link><Link href="/collection">SAGO Products</Link><Link href="/cocktails">Cocktail Recipes</Link><Link href="/promotions">Promotions</Link></nav><Link className="cocktails-header__cta" href="/#shop">Find your pour <ArrowRight size={14} /></Link></header>
+  return (
+    <main className="cocktails-page">
+      <SiteNav />
 
-    <section className="cocktail-recipes section-pad" id="recipes"><div className="section-heading"><div><p className="eyebrow">COCKTAILS</p><h2 className="display">Find Your Next<br /><em>Favourite Cocktail</em></h2></div></div><div className="cocktail-filters">{categories.map((item) => <button key={item} className={category === item ? "is-active" : ""} onClick={() => chooseCategory(item)}>{item}</button>)}</div><div className="cocktail-recipe-grid">{visibleRecipes.map((recipe, index) => <button className={`cocktail-recipe-card ${activeRecipe === index ? "is-active" : ""}`} key={recipe.name} onClick={() => chooseRecipe(index)}><div className="cocktail-recipe-card__image"><Image src={recipe.image} alt={recipe.name} fill sizes="(max-width: 800px) 100vw, 25vw" /></div><div className="cocktail-recipe-card__copy"><p className="eyebrow">{recipe.product}</p><h3 className="display">{recipe.name}</h3><div className="cocktail-recipe-card__meta"><span><Clock3 size={13} /> {recipe.time}</span><span>{recipe.difficulty}</span><span>{recipe.glass}</span></div></div></button>)}</div></section>
+      <section className="cocktail-recipes section-pad" id="recipes">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">COCKTAILS</p>
+            <h2 className="display">Find Your Next<br /><em>Favourite Cocktail</em></h2>
+          </div>
+        </div>
 
-    <AnimatePresence mode="wait" initial={false}>{selected && <motion.section key={selected.name} id="recipe-detail" className="recipe-detail section-pad" initial={reduceMotion ? false : { opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -20 }} transition={reduceMotion ? { duration: 0 } : { duration: .65, ease: [0.16, 1, 0.3, 1] }}><motion.div className="recipe-detail__image" initial={reduceMotion ? false : { scale: .97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={reduceMotion ? { duration: 0 } : { duration: .7, delay: .05, ease: [0.16, 1, 0.3, 1] }}><Image src={selected.image} alt={selected.name} fill sizes="(max-width: 800px) 100vw, 45vw" /></motion.div><div className="recipe-detail__copy"><p className="eyebrow">{selected.product} · {selected.difficulty}</p><h2 className="display">{selected.name}</h2><p className="recipe-detail__style">{selected.style}</p><div className="recipe-detail__rule" /><div className="recipe-detail__stats"><span>{selected.time}</span><span>{selected.glass}</span><span>{selected.ice}</span></div><div className="recipe-detail__columns"><div><h3>Ingredients</h3><ul>{selected.ingredients.map((item) => <li key={item}>{item}</li>)}</ul>{selected.prep && <><h3>Preparation</h3><ul>{selected.prep.map((item) => <li key={item}>{item}</li>)}</ul></>}<h3>Equipment</h3><ul>{selected.equipment.map((item) => <li key={item}>{item}</li>)}</ul></div><div><h3>Method</h3><ol>{selected.method.map((item) => <li key={item}>{item}</li>)}</ol><h3>Garnish</h3><p>{selected.garnish}</p></div></div><div className="recipe-detail__profile"><span>Flavour profile</span><p>{selected.profile}</p><span>Best for</span><p>{selected.occasion}</p></div></div></motion.section>}</AnimatePresence>
+        <div className="cocktails-carousel">
+          <DepthCarousel
+            items={cocktailGallery}
+            cardWidth={300}
+            cardHeight={420}
+            depth={190}
+            spread={78}
+            tilt={18}
+            perspective={1400}
+            visibleCards={4}
+            falloff={0.2}
+            blur={5}
+            autoplay
+            autoplayDelay={3600}
+            loop
+            tint="var(--oxblood)"
+          />
+        </div>
 
-    <section className="cocktail-final-cta"><Image src="/assets/7.png" alt="Sago whisky ready to share" fill sizes="100vw" /><div className="cocktail-final-cta__shade" /><div className="cocktail-final-cta__copy"><p className="eyebrow">Your next pour is waiting</p><h2 className="display">Make it<br /><em>a Sago night.</em></h2><Link className="button" href="/#shop">Find a retailer <ArrowRight size={15} /></Link></div></section>
-  </main>;
+        <div className="cocktail-filters">
+          {categories.map((item) => (
+            <button key={item} className={category === item ? "is-active" : ""} onClick={() => chooseCategory(item)}>
+              {item}
+            </button>
+          ))}
+        </div>
+
+        <div className="cocktail-recipe-grid">
+          {visibleRecipes.map((recipe, index) => (
+            <button className={`cocktail-recipe-card ${activeRecipe === index ? "is-active" : ""}`} key={recipe.name} onClick={() => chooseRecipe(index)}>
+              <div className="cocktail-recipe-card__image">
+                <Image src={recipe.image} alt={recipe.name} fill sizes="(max-width: 800px) 100vw, 25vw" />
+              </div>
+              <div className="cocktail-recipe-card__copy">
+                <p className="eyebrow">{recipe.product}</p>
+                <h3 className="display">{recipe.name}</h3>
+                <div className="cocktail-recipe-card__meta">
+                  <span><Clock3 size={13} /> {recipe.time}</span>
+                  <span>{recipe.difficulty}</span>
+                  <span>{recipe.glass}</span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <AnimatePresence mode="wait" initial={false}>
+        {selected && (
+          <motion.section key={selected.name} id="recipe-detail" className="recipe-detail section-pad" initial={reduceMotion ? false : { opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -20 }} transition={reduceMotion ? { duration: 0 } : { duration: .65, ease: [0.16, 1, 0.3, 1] }}>
+            <motion.div className="recipe-detail__image" initial={reduceMotion ? false : { scale: .97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={reduceMotion ? { duration: 0 } : { duration: .7, delay: .05, ease: [0.16, 1, 0.3, 1] }}>
+              <Image src={selected.image} alt={selected.name} fill sizes="(max-width: 800px) 100vw, 45vw" />
+            </motion.div>
+            <div className="recipe-detail__copy">
+              <p className="eyebrow">{selected.product} · {selected.difficulty}</p>
+              <h2 className="display">{selected.name}</h2>
+              <p className="recipe-detail__style">{selected.style}</p>
+              <div className="recipe-detail__rule" />
+              <div className="recipe-detail__stats">
+                <span>{selected.time}</span>
+                <span>{selected.glass}</span>
+                <span>{selected.ice}</span>
+              </div>
+              <div className="recipe-detail__columns">
+                <div>
+                  <h3>Ingredients</h3>
+                  <ul>{selected.ingredients.map((item) => <li key={item}>{item}</li>)}</ul>
+                  {selected.prep && <><h3>Preparation</h3><ul>{selected.prep.map((item) => <li key={item}>{item}</li>)}</ul></>}
+                  <h3>Equipment</h3>
+                  <ul>{selected.equipment.map((item) => <li key={item}>{item}</li>)}</ul>
+                </div>
+                <div>
+                  <h3>Method</h3>
+                  <ol>{selected.method.map((item) => <li key={item}>{item}</li>)}</ol>
+                  <h3>Garnish</h3>
+                  <p>{selected.garnish}</p>
+                </div>
+              </div>
+              <div className="recipe-detail__profile">
+                <span>Flavour profile</span>
+                <p>{selected.profile}</p>
+                <span>Best for</span>
+                <p>{selected.occasion}</p>
+              </div>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+
+      <section className="cocktail-final-cta">
+        <Image src="/assets/7.png" alt="Sago whisky ready to share" fill sizes="100vw" />
+        <div className="cocktail-final-cta__shade" />
+        <div className="cocktail-final-cta__copy">
+          <p className="eyebrow">Your next pour is waiting</p>
+          <h2 className="display">Make it<br /><em>a Sago night.</em></h2>
+          <Link className="button" href="/#shop">Find a retailer <ArrowRight size={15} /></Link>
+        </div>
+      </section>
+
+      <SiteFooter />
+    </main>
+  );
 }

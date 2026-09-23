@@ -2,11 +2,10 @@
 
 import Image from "next/image";
 import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
-import { useState } from "react";
-import { FaFacebookF, FaInstagram, FaTiktok } from "react-icons/fa6";
+import { useEffect, useState } from "react";
 import SiteFooter from "@/components/site-footer";
-import DepthCarousel from "@/components/ui/depth-carousel";
 import ClubModal from "@/components/club-modal";
+import SiteNav from "@/components/site-nav";
 
 const products = [
   { name: "Cinnamon Whisky", image: "/assets/3.png", comingSoon: false },
@@ -31,23 +30,25 @@ const retailers = [
   { name: "Cape & Grain", type: "Hotel", country: "Botswana", address: "Central Business District, Gaborone", hours: "Open until 22:00", mapUrl: "https://www.google.com/maps/search/?api=1&query=Cape+and+Grain+Gaborone" },
 ];
 
-const collectionGallery = [
-  { image: "/assets/1.png", alt: "Sago Gold Reserve campaign artwork" },
-  { image: "/assets/2.png", alt: "Sago Gold Reserve with a whisky glass" },
-  { image: "/assets/3.png", alt: "Sago Cinnamon Whisky" },
-  { image: "/assets/4.png", alt: "Sago whisky poured over ice" },
-  { image: "/assets/5.png", alt: "Sago Gold Reserve bottle" },
-  { image: "/assets/6.png", alt: "Sago Gold Reserve among oak and stone" },
-  { image: "/assets/7.png", alt: "Sago collection gallery" },
-  { image: "/assets/8.png", alt: "Sago Gold Reserve in a warm study" },
-];
-
 export default function Home() {
   const [country, setCountry] = useState("All markets");
   const [query, setQuery] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
   const [clubModalOpen, setClubModalOpen] = useState(false);
   const [cocktailSlide, setCocktailSlide] = useState(0);
+
+  useEffect(() => {
+    const handleHash = () => {
+      if (typeof window !== "undefined" && window.location.hash === "#club") {
+        setClubModalOpen(true);
+        const url = window.location.pathname + window.location.search;
+        window.history.replaceState(null, "", url);
+      }
+    };
+
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
 
   const filteredRetailers = retailers.filter(
     (r) =>
@@ -55,10 +56,8 @@ export default function Home() {
       `${r.name} ${r.type} ${r.address}`.toLowerCase().includes(query.toLowerCase())
   );
 
-  const openClubModal = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const openClubModal = () => {
     setClubModalOpen(true);
-    setMenuOpen(false);
   };
 
   const prevSlide = () =>
@@ -70,59 +69,7 @@ export default function Home() {
     <div className="sago-home">
 
       {/* ── HEADER ─────────────────────────────────────────────── */}
-      <header className="home-nav" role="banner">
-        <div className="nav-container">
-          <nav className="nav-capsule" aria-label="Main navigation">
-            <a className="nav-capsule__logo" href="#top" aria-label="Sago home">
-              <Image src="/assets/Sago Logo.png" alt="" width={48} height={48} priority />
-            </a>
-
-            <button
-              className="nav-capsule__hamburger"
-              type="button"
-              aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
-              aria-expanded={menuOpen}
-              aria-controls="nav-drawer"
-              onClick={() => setMenuOpen((o) => !o)}
-            >
-              <span className="nav-capsule__hamburger-line" aria-hidden="true" />
-              <span className="nav-capsule__hamburger-line" aria-hidden="true" />
-              <span className="nav-capsule__hamburger-line" aria-hidden="true" />
-            </button>
-          </nav>
-
-          <div
-            id="nav-drawer"
-            className={`home-nav__drawer${menuOpen ? " is-open" : ""}`}
-            aria-hidden={!menuOpen}
-          >
-          <a href="/" style={{ '--itemIndex': 0 } as React.CSSProperties} tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)}>Home                  <span>01</span></a>
-          <a href="/about" style={{ '--itemIndex': 1 } as React.CSSProperties} tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)}>Our Philosophy        <span>02</span></a>
-          <a href="/collection" style={{ '--itemIndex': 2 } as React.CSSProperties} tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)}>SAGO Products         <span>03</span></a>
-          <a href="/cocktails" style={{ '--itemIndex': 3 } as React.CSSProperties} tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)}>Cocktail Recipes      <span>04</span></a>
-          <a href="/promotions" style={{ '--itemIndex': 4 } as React.CSSProperties} tabIndex={menuOpen ? 0 : -1} onClick={() => setMenuOpen(false)}>Promotions            <span>05</span></a>
-          <a href="#" style={{ '--itemIndex': 5 } as React.CSSProperties} tabIndex={menuOpen ? 0 : -1} onClick={openClubModal}           >The SAGO Collective   <span>06</span></a>
-
-          <div className="home-nav__drawer-social">
-            <a
-              href="https://www.instagram.com/sagowhisky?stkn=MXNiZWszb3kyZWJ4cw=="
-              target="_blank"
-              rel="noreferrer"
-              tabIndex={menuOpen ? 0 : -1}
-              aria-label="SAGO on Instagram"
-            >
-              <FaInstagram aria-hidden="true" />
-            </a>
-            <a href="#" tabIndex={menuOpen ? 0 : -1} aria-label="SAGO on Facebook (coming soon)" title="Coming soon">
-              <FaFacebookF aria-hidden="true" />
-            </a>
-            <a href="#" tabIndex={menuOpen ? 0 : -1} aria-label="SAGO on TikTok (coming soon)" title="Coming soon">
-              <FaTiktok aria-hidden="true" />
-            </a>
-          </div>
-        </div>
-        </div>
-      </header>
+      <SiteNav onClub={openClubModal} />
 
       <main id="top">
 
@@ -190,25 +137,6 @@ export default function Home() {
                 Many Occasions.<br /><em>One Bottle.</em>
               </h2>
             </div>
-          </div>
-
-          <div className="home-collection__carousel">
-            <DepthCarousel
-              items={collectionGallery}
-              cardWidth={300}
-              cardHeight={420}
-              depth={190}
-              spread={78}
-              tilt={18}
-              perspective={1400}
-              visibleCards={4}
-              falloff={0.2}
-              blur={5}
-              autoplay
-              autoplayDelay={3600}
-              loop
-              tint="var(--green)"
-            />
           </div>
 
           <div className="home-product-rail">
