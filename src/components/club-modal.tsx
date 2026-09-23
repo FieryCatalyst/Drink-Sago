@@ -7,11 +7,13 @@ import Image from "next/image";
 interface ClubModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubmit?: (email: string) => Promise<void>;
 }
 
-export default function ClubModal({ isOpen, onClose }: ClubModalProps) {
+export default function ClubModal({ isOpen, onClose, onSubmit }: ClubModalProps) {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error" | "invalid">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (isOpen) {
@@ -24,13 +26,35 @@ export default function ClubModal({ isOpen, onClose }: ClubModalProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const trimmed = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!trimmed || trimmed.length > 254 || !emailRegex.test(trimmed)) {
+      setStatus("invalid");
+      setErrorMessage("Please enter a valid email address.");
+      return;
+    }
+    setErrorMessage("");
     setStatus("submitting");
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (onSubmit) {
+        await onSubmit(trimmed);
+      } else {
+        const response = await fetch("/api/club", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: trimmed }),
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => null);
+          throw new Error(data?.error || "Submission failed");
+        }
+      }
       setStatus("success");
       setEmail("");
     } catch {
       setStatus("error");
+      setErrorMessage("Something went wrong. Please try again.");
     }
   };
 
@@ -88,17 +112,25 @@ export default function ClubModal({ isOpen, onClose }: ClubModalProps) {
                     name="email"
                     placeholder="Enter your email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      if (status === "error" || status === "invalid") {
+                        setStatus("idle");
+                        setErrorMessage("");
+                      }
+                    }}
                     required
                     autoComplete="email"
                     disabled={status === "submitting"}
                     className="club-modal__input"
-                    aria-describedby={status === "error" ? "club-error" : undefined}
+                    aria-describedby={status === "error" || status === "invalid" ? "club-error" : undefined}
                   />
                 </label>
 
-                {status === "error" && (
-                  <p id="club-error" className="club-modal__error">Something went wrong. Please try again.</p>
+                {(status === "error" || status === "invalid") && (
+                  <p id="club-error" className="club-modal__error">
+                    {errorMessage || (status === "invalid" ? "Please enter a valid email address." : "Something went wrong. Please try again.")}
+                  </p>
                 )}
 
                 <button

@@ -286,7 +286,8 @@ export default function Home() {
                 <Search size={16} />
                 <input
                   value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  onChange={(e) => setQuery(e.target.value.slice(0, 100))}
+                  maxLength={100}
                   placeholder="Search city or venue"
                   aria-label="Search retailers"
                 />
