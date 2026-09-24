@@ -6,11 +6,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { FaFacebookF, FaInstagram, FaTiktok } from "react-icons/fa";
 
-interface SiteNavProps {
-  /** Optional callback for "The SAGO Collective" item (home page club modal). */
-  onClub?: () => void;
-}
-
 const NAV_LINKS = [
   { label: "Home",             href: "/",           index: 0 },
   { label: "Our Philosophy",   href: "/about",       index: 1 },
@@ -19,7 +14,7 @@ const NAV_LINKS = [
   { label: "Promotions",       href: "/promotions",  index: 4 },
 ];
 
-export default function SiteNav({ onClub }: SiteNavProps) {
+export default function SiteNav() {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -111,26 +106,15 @@ export default function SiteNav({ onClub }: SiteNavProps) {
           ))}
 
           {/* The SAGO Collective / SAGO Club */}
-          {onClub ? (
-            <a
-              href="#"
-              style={{ "--itemIndex": 5 } as React.CSSProperties}
-              tabIndex={menuOpen ? 0 : -1}
-              onClick={(e) => { e.preventDefault(); close(); onClub(); }}
-            >
-              The SAGO Collective
-            </a>
-          ) : (
-            <Link
-              href="/club"
-              style={{ "--itemIndex": 5 } as React.CSSProperties}
-              tabIndex={menuOpen ? 0 : -1}
-              className={isActive("/club") ? "site-nav__active" : undefined}
-              onClick={close}
-            >
-              The SAGO Collective
-            </Link>
-          )}
+          <Link
+            href="/club"
+            style={{ "--itemIndex": 5 } as React.CSSProperties}
+            tabIndex={menuOpen ? 0 : -1}
+            className={isActive("/club") ? "site-nav__active" : undefined}
+            onClick={close}
+          >
+            The SAGO Collective
+          </Link>
 
           {/* Social icons */}
           <div className="home-nav__drawer-social">

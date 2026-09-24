@@ -154,10 +154,16 @@ export default function EditorialCocktailCarousel({
 
   // Initialize track position centered on middle copy
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const timer1 = setTimeout(() => {
       scrollToIndex(BASE_COUNT * 2, false);
     }, 50);
-    return () => clearTimeout(timer);
+    const timer2 = setTimeout(() => {
+      scrollToIndex(BASE_COUNT * 2, false);
+    }, 250);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
   }, []);
 
   // Synchronize with external active recipe if provided

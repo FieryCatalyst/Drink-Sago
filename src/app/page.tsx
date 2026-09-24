@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import SiteFooter from "@/components/site-footer";
@@ -56,7 +57,7 @@ export default function Home() {
     <div className="sago-home">
 
       {/* ── HEADER ─────────────────────────────────────────────── */}
-      <SiteNav onClub={openClubModal} />
+      <SiteNav />
 
       <main id="top">
 
@@ -101,9 +102,9 @@ export default function Home() {
               use modern innovation to create exceptionally smooth spirits.
             </p>
             <p className="home-intro__closing">CELEBRATE THE MOMENT WITH SAGO.</p>
-            <button className="home-button" onClick={openClubModal}>
+            <Link className="home-button" href="/club">
               Join the SAGO Collective <ArrowRight size={16} />
-            </button>
+            </Link>
           </div>
           <div className="home-intro__image">
             <Image

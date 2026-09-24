@@ -83,7 +83,8 @@ export default function CocktailsPage() {
   };
 
   const scrollToRecipes = () => {
-    document.getElementById("recipes")?.scrollIntoView({
+    const target = document.getElementById("recipe-filters") || document.getElementById("cocktail-grid");
+    target?.scrollIntoView({
       behavior: reduceMotion ? "auto" : "smooth",
       block: "start",
     });
@@ -111,7 +112,7 @@ export default function CocktailsPage() {
           />
         </div>
 
-        <div className="cocktail-filters">
+        <div className="cocktail-filters" id="recipe-filters">
           {categories.map((item) => (
             <button key={item} className={category === item ? "is-active" : ""} onClick={() => chooseCategory(item)}>
               {item}
@@ -119,11 +120,11 @@ export default function CocktailsPage() {
           ))}
         </div>
 
-        <div className="cocktail-recipe-grid">
+        <div className="cocktail-recipe-grid" id="cocktail-grid">
           {visibleRecipes.map((recipe, index) => (
             <button className={`cocktail-recipe-card ${activeRecipe === index ? "is-active" : ""}`} key={recipe.name} onClick={() => chooseRecipe(index)}>
               <div className="cocktail-recipe-card__image">
-                <Image src={recipe.image} alt={recipe.name} fill sizes="(max-width: 800px) 100vw, 25vw" />
+                <Image src={recipe.image} alt={recipe.name} fill sizes="(max-width: 800px) 50vw, 25vw" />
               </div>
               <div className="cocktail-recipe-card__copy">
                 <p className="eyebrow">{recipe.product}</p>
@@ -149,10 +150,10 @@ export default function CocktailsPage() {
                 type="button"
                 onClick={scrollToRecipes}
                 className="recipe-detail__back"
-                aria-label="Back to all recipes"
+                aria-label="Back to recipes"
               >
                 <ArrowLeft size={13} />
-                <span>Back to all recipes</span>
+                <span>Back to recipes</span>
               </button>
               <p className="eyebrow">{selected.product}</p>
               <h2 className="display">{selected.name}</h2>
@@ -180,16 +181,6 @@ export default function CocktailsPage() {
                 <p>{selected.profile}</p>
                 <span>Best for</span>
                 <p>{selected.occasion}</p>
-              </div>
-              <div className="recipe-detail__actions">
-                <button
-                  type="button"
-                  onClick={scrollToRecipes}
-                  className="recipe-detail__back-btn"
-                >
-                  <ArrowLeft size={13} />
-                  <span>Back to recipe list</span>
-                </button>
               </div>
             </div>
           </motion.section>
