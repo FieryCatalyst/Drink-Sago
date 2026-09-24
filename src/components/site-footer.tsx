@@ -29,20 +29,29 @@ export default function SiteFooter() {
           <Link className="brand display" href="/" aria-label="Sago home">
             <Image className="sago-logo sago-logo--footer" src="/assets/Sago Logo.png" alt="Sago" width={64} height={64} />
           </Link>
-          <p>The House of<br />Premium Spirits.</p>
+          <p className="footer-tagline">The House of Premium Spirits</p>
           <div className="footer-links">
             <Link href="/">Home</Link>
             <Link href="/about">Our Philosophy</Link>
             <Link href="/collection">SAGO Products</Link>
             <Link href="/cocktails">Cocktail Recipes</Link>
             <Link href="/promotions">Promotions</Link>
-            <Link href="/club">The SAGO Club</Link>
+            <Link href="/club">The SAGO Collective</Link>
           </div>
         </div>
         <div className="footer-social">
           <p className="eyebrow">Contact Sago</p>
-          <a className="footer-contact" href="mailto:hello@sago.world"><Mail size={18} /> hello@sago.world</a>
-          <p>For retailer information, product questions and privacy requests.</p>
+          <div className="footer-contact-list">
+            <a className="footer-contact" href="mailto:Info@drinksago.com">
+              <Mail size={16} /> Info@drinksago.com
+            </a>
+            <a className="footer-contact" href="mailto:partnerships@drinksago.com">
+              <Mail size={16} /> partnerships@drinksago.com
+            </a>
+          </div>
+          <p className="footer-contact-desc">
+            For retailer information, product questions, partnerships and privacy requests.
+          </p>
           <LogoLoop logos={socialLinks} speed={28} gap={24} logoHeight={24} pauseOnHover ariaLabel="Sago social links" />
         </div>
         <form className="newsletter" onSubmit={(event) => event.preventDefault()}>

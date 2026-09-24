@@ -107,7 +107,6 @@ export default function SiteNav({ onClub }: SiteNavProps) {
               onClick={close}
             >
               {link.label}
-              <span>0{link.index + 1}</span>
             </Link>
           ))}
 
@@ -119,7 +118,7 @@ export default function SiteNav({ onClub }: SiteNavProps) {
               tabIndex={menuOpen ? 0 : -1}
               onClick={(e) => { e.preventDefault(); close(); onClub(); }}
             >
-              The SAGO Collective <span>06</span>
+              The SAGO Collective
             </a>
           ) : (
             <Link
@@ -129,7 +128,7 @@ export default function SiteNav({ onClub }: SiteNavProps) {
               className={isActive("/club") ? "site-nav__active" : undefined}
               onClick={close}
             >
-              The SAGO Collective <span>06</span>
+              The SAGO Collective
             </Link>
           )}
 

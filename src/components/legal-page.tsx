@@ -16,7 +16,7 @@ export default function LegalPage({ title, intro, sections }: { title: string; i
         <p className="legal-intro">{intro}</p>
         <p className="legal-updated">Last updated: 18 September 2026</p>
         {sections.map((section) => <section className="legal-section" key={section.title}><h2 className="display">{section.title}</h2>{section.children}</section>)}
-        <p className="legal-contact">Questions or privacy requests: <a href="mailto:hello@sago.world">hello@sago.world</a></p>
+        <p className="legal-contact">Questions or privacy requests: <a href="mailto:Info@drinksago.com">Info@drinksago.com</a></p>
       </article>
       <SiteFooter />
     </main>
