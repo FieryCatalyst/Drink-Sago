@@ -108,7 +108,7 @@ export const SAGO_EDITORIAL_COCKTAILS: EditorialCocktail[] = [
   {
     id: "sago-blackout",
     name: "SAGO BLACKOUT™",
-    image: "/assets/8.png",
+    image: "/assets/SAGO_BLACKOUT.png",
     notes: ["DEEP COFFEE", "VERMOUTH", "BITTERSWEET CACAO"],
     product: "Sago Original + Cinnamon",
   },
