@@ -8,7 +8,7 @@ import { FaFacebookF, FaInstagram, FaTiktok } from "react-icons/fa";
 
 const NAV_LINKS = [
   { label: "Home",             href: "/",           index: 0 },
-  { label: "Our Philosophy",   href: "/about",       index: 1 },
+  { label: "Our Story",         href: "/about",       index: 1 },
   { label: "SAGO Products",    href: "/collection",  index: 2 },
   { label: "Cocktail Recipes", href: "/cocktails",   index: 3 },
   { label: "Promotions",       href: "/promotions",  index: 4 },

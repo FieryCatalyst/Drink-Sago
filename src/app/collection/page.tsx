@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowDown, ArrowRight } from "lucide-react";
 import SiteNav from "@/components/site-nav";
+import SiteFooter from "@/components/site-footer";
 
 type Product = {
   name: string;
@@ -167,6 +168,7 @@ export default function CollectionPage() {
           ))}
         </div>
       </section>
+      <SiteFooter />
     </main>
   );
 }

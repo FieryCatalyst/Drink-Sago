@@ -10,12 +10,15 @@ import SiteNav from "@/components/site-nav";
 import EditorialCocktailCarousel from "@/components/editorial-cocktail-carousel";
 
 const products = [
-  { name: "Cinnamon Whisky", image: "/assets/3.png", comingSoon: false },
-  { name: "GOLD RESERVE WHISKY", image: "/assets/5.png", comingSoon: false },
-  { name: "Agave Spirits", image: "", comingSoon: true },
+  { name: "Cinnamon Whisky", image: "/assets/3.png" },
+  { name: "GOLD RESERVE WHISKY", image: "/assets/5.png" },
 ];
 
-
+const comingSoonProduct = {
+  name: "Agave Spirits",
+  description: "A bold new expression from the SAGO house.",
+  finish: "FRESH AGAVE, CITRUS FRUIT WITH A PEPPERY FINISH",
+};
 
 const retailers = [
   { name: "The Tasting Room", type: "Bar", country: "Zambia", address: "Plot 14, Kabulonga, Lusaka", hours: "Open until 23:00", mapUrl: "https://www.google.com/maps/search/?api=1&query=The+Tasting+Room+Kabulonga+Lusaka" },
@@ -76,9 +79,14 @@ export default function Home() {
           <div className="home-hero__content">
             <h1 className="home-hero__wordmark">SAGO</h1>
             <p className="home-hero__tagline">The House of Premium Spirits</p>
-            <a className="home-button home-button--centered" href="#collection">
-              EXPLORE OUR COLLECTION <ArrowRight size={16} />
-            </a>
+            <div className="home-hero__actions">
+              <a className="home-button" href="#collection">
+                EXPLORE OUR COLLECTION <ArrowRight size={16} />
+              </a>
+              <a className="home-button" href="/promotions">
+                PROMOTIONS <ArrowRight size={16} />
+              </a>
+            </div>
           </div>
         </section>
 
@@ -89,19 +97,24 @@ export default function Home() {
             <p className="home-intro__lead">CELEBRATE THE MOMENT</p>
             <p className="body-copy">
               Life is made up of wins, celebrations, and multiple small moments.
-              Sago is designed to raise a glass to every occasion.
+              Sago is designed to{" "}
+              <span className="highlight-blue">raise a glass to every occasion</span>.
             </p>
             <p className="body-copy">
-              Our journey begins with our Premium Oak Whisky, a refined, wood-forward
-              expression designed for the purist, alongside elevated culinary matings of
-              Toasted Cinnamon Bark and Sweet Vanilla infusions designed to challenge the
-              boundaries of dark spirits.
+              Our journey begins with our Premium Oak Whisky, a refined,{" "}
+              <span className="highlight-blue">wood-forward</span> expression designed
+              for the purist, alongside elevated culinary matings of{" "}
+              <span className="highlight-blue">Toasted Cinnamon Bark</span> and{" "}
+              <span className="highlight-blue">Sweet Vanilla</span> infusions designed to
+              challenge the boundaries of dark spirits.
             </p>
             <p className="body-copy">
-              We honour the craftsmanship of heritage distillation but are not afraid to
-              use modern innovation to create exceptionally smooth spirits.
+              We honour the <span className="highlight-blue">craftsmanship</span> of
+              heritage distillation but are not afraid to use{" "}
+              <span className="highlight-blue">modern innovation</span> to create{" "}
+              <span className="highlight-blue">exceptionally smooth spirits</span>.
             </p>
-            <p className="home-intro__closing">CELEBRATE THE MOMENT WITH SAGO.</p>
+            <p className="home-intro__closing highlight-blue">CELEBRATE THE MOMENT WITH SAGO.</p>
             <Link className="home-button" href="/club">
               Join the SAGO Collective <ArrowRight size={16} />
             </Link>
@@ -131,21 +144,31 @@ export default function Home() {
             {products.map((product) => (
               <article className="home-product" key={product.name}>
                 <div className="home-product__image">
-                  {product.image && (
-                    <Image
-                      src={product.image}
-                      alt={`${product.name} — Sago`}
-                      fill
-                      sizes="(max-width: 800px) 86vw, 30vw"
-                    />
-                  )}
+                  <Image
+                    src={product.image}
+                    alt={`${product.name} — Sago`}
+                    fill
+                    sizes="(max-width: 800px) 86vw, 45vw"
+                  />
                 </div>
-                {product.comingSoon && (
-                  <span className="home-product__badge">Coming Soon</span>
-                )}
                 <h3 className="display">{product.name}</h3>
               </article>
             ))}
+          </div>
+
+          {/* Coming Soon: Agave Spirits — same panel treatment as /collection */}
+          <div className="home-coming-soon">
+            <div className="home-coming-soon__left">
+              <span className="home-coming-soon__badge">Coming Soon</span>
+              <div>
+                <h3 className="home-coming-soon__title">{comingSoonProduct.name}</h3>
+                <p className="home-coming-soon__desc">{comingSoonProduct.description}</p>
+              </div>
+            </div>
+            <div className="home-coming-soon__notes">
+              <span>Finish</span>
+              <p>{comingSoonProduct.finish}</p>
+            </div>
           </div>
         </section>
 
@@ -165,7 +188,7 @@ export default function Home() {
             <h2 className="display">
               Let the night<br /><em>take its time.</em>
             </h2>
-            <a className="home-button home-button--light" href="/cocktails">
+            <a className="home-button" href="/cocktails">
               Build a ritual <ArrowRight size={16} />
             </a>
           </div>
@@ -261,7 +284,7 @@ export default function Home() {
             </div>
             <div className="home-retailers">
               {filteredRetailers.length > 0
-                ? filteredRetailers.slice(0, 2).map((retailer) =>
+                ? filteredRetailers.map((retailer) =>
                     retailer.mapUrl ? (
                       <a href={retailer.mapUrl} target="_blank" rel="noreferrer" key={retailer.name}>
                         <span>{retailer.name}</span>

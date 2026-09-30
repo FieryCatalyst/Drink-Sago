@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Mail } from "lucide-react";
+import { ArrowRight, Mail } from "lucide-react";
 import { FaFacebookF, FaInstagram, FaTiktok } from "react-icons/fa6";
 import LogoLoop, { type LogoItem } from "@/components/ui/logo-loop";
 
@@ -32,12 +32,15 @@ export default function SiteFooter() {
           <p className="footer-tagline">The House of Premium Spirits</p>
           <div className="footer-links">
             <Link href="/">Home</Link>
-            <Link href="/about">Our Philosophy</Link>
+            <Link href="/about">Our Story</Link>
             <Link href="/collection">SAGO Products</Link>
             <Link href="/cocktails">Cocktail Recipes</Link>
             <Link href="/promotions">Promotions</Link>
             <Link href="/club">The SAGO Collective</Link>
           </div>
+          <Link className="button footer-collective" href="/club">
+            Join the SAGO Collective <ArrowRight size={15} />
+          </Link>
         </div>
         <div className="footer-social">
           <p className="eyebrow">Contact Sago</p>
