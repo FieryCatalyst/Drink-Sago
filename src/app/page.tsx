@@ -98,23 +98,23 @@ export default function Home() {
             <p className="body-copy">
               Life is made up of wins, celebrations, and multiple small moments.
               Sago is designed to{" "}
-              <span className="highlight-blue">raise a glass to every occasion</span>.
+              <strong>raise a glass to every occasion</strong>.
             </p>
             <p className="body-copy">
               Our journey begins with our Premium Oak Whisky, a refined,{" "}
-              <span className="highlight-blue">wood-forward</span> expression designed
+              <strong>wood-forward</strong> expression designed
               for the purist, alongside elevated culinary matings of{" "}
-              <span className="highlight-blue">Toasted Cinnamon Bark</span> and{" "}
-              <span className="highlight-blue">Sweet Vanilla</span> infusions designed to
+              <strong>Toasted Cinnamon Bark</strong> and{" "}
+              <strong>Sweet Vanilla</strong> infusions designed to
               challenge the boundaries of dark spirits.
             </p>
             <p className="body-copy">
-              We honour the <span className="highlight-blue">craftsmanship</span> of
+              We honour the <strong>craftsmanship</strong> of
               heritage distillation but are not afraid to use{" "}
-              <span className="highlight-blue">modern innovation</span> to create{" "}
-              <span className="highlight-blue">exceptionally smooth spirits</span>.
+              <strong>modern innovation</strong> to create{" "}
+              <strong>exceptionally smooth spirits</strong>.
             </p>
-            <p className="home-intro__closing highlight-blue">CELEBRATE THE MOMENT WITH SAGO.</p>
+            <p className="home-intro__closing">CELEBRATE THE MOMENT WITH SAGO.</p>
             <Link className="home-button" href="/club">
               Join the SAGO Collective <ArrowRight size={16} />
             </Link>
@@ -172,27 +172,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── INTERSTITIAL FEATURE ───────────────────────────────── */}
-        <section className="home-feature">
-          <Image
-            src="/assets/6.png"
-            alt="Sago bottle resting in its natural surroundings"
-            fill
-            sizes="100vw"
-            className="home-feature__image"
-          />
-          <div className="home-feature__shade" />
-          <div className="home-feature::after" />
-          <div className="home-feature__copy">
-            <p className="eyebrow">The long finish</p>
-            <h2 className="display">
-              Let the night<br /><em>take its time.</em>
-            </h2>
-            <a className="home-button" href="/cocktails">
-              Build a ritual <ArrowRight size={16} />
-            </a>
-          </div>
-        </section>
 
         {/* ── COCKTAIL RECIPES (EDITORIAL HORIZONTAL CAROUSEL) ── */}
         <section className="home-cocktails" id="cocktails">
@@ -203,9 +182,6 @@ export default function Home() {
                 Find Your Next<br /><em>Favourite Cocktail</em>
               </h2>
             </div>
-            <p className="heading-note">
-              Discover the different ways to enjoy Sago — crafted to raise a glass to every occasion.
-            </p>
           </div>
 
           <EditorialCocktailCarousel />
@@ -217,35 +193,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ── STORY ──────────────────────────────────────────────── */}
-        <section className="home-story" id="story">
-          <div className="home-story__image">
-            <Image
-              src="/assets/8.png"
-              alt="Sago bottle and whisky glass in a warm study"
-              fill
-              sizes="(max-width: 800px) 100vw, 48vw"
-            />
-          </div>
-          <div className="home-story__copy">
-            <p className="eyebrow">Our story</p>
-            <h2 className="display">
-              Made slowly.<br /><em>Shared freely.</em>
-            </h2>
-            <p className="body-copy">
-              From good grain to deep oak, Sago is a whisky shaped by patience and
-              finished for the present moment.
-            </p>
-            <div className="home-story__steps">
-              <span>Good grain</span>
-              <span>Deep oak</span>
-              <span>Bold spirit</span>
-            </div>
-            <a className="home-text-link" href="/about">
-              Read the story <ArrowRight size={15} />
-            </a>
-          </div>
-        </section>
 
         {/* ── FIND YOUR POUR ─────────────────────────────────────── */}
         <section className="home-find" id="shop">

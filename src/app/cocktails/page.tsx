@@ -99,9 +99,6 @@ export default function CocktailsPage() {
             <p className="eyebrow">COCKTAILS</p>
             <h2 className="display">Find Your Next<br /><em>Favourite Cocktail</em></h2>
           </div>
-          <p className="heading-note">
-            Discover the different ways to enjoy Sago — select any signature serve to view its recipe below.
-          </p>
         </div>
 
         <div className="cocktails-editorial-wrap">

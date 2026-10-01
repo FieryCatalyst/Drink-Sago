@@ -43,17 +43,17 @@ export default function SiteFooter() {
           </Link>
         </div>
         <div className="footer-social">
-          <p className="eyebrow">Contact Sago</p>
+          <p className="eyebrow">CONTACT SAGO</p>
           <div className="footer-contact-list">
             <a className="footer-contact" href="mailto:Info@drinksago.com">
-              <Mail size={16} /> Info@drinksago.com
+              <Mail size={16} /> INFO@DRINKSAGO.COM
             </a>
             <a className="footer-contact" href="mailto:partnerships@drinksago.com">
-              <Mail size={16} /> partnerships@drinksago.com
+              <Mail size={16} /> PARTNERSHIPS@DRINKSAGO.COM
             </a>
           </div>
           <p className="footer-contact-desc">
-            For retailer information, product questions, partnerships and privacy requests.
+            FOR RETAILER INFORMATION, PRODUCT QUESTIONS, PARTNERSHIPS AND PRIVACY REQUESTS.
           </p>
           <LogoLoop logos={socialLinks} speed={28} gap={24} logoHeight={24} pauseOnHover ariaLabel="Sago social links" />
         </div>
