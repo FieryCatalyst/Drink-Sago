@@ -62,7 +62,7 @@ export default function CollectionPage() {
       <section className="collection-hero">
         <Image
           src="/assets/1.png"
-          alt="SAGO Products — The House of Premium Spirits"
+          alt="SAGO Products | The House of Premium Spirits"
           fill
           priority
           sizes="100vw"
@@ -72,7 +72,6 @@ export default function CollectionPage() {
         <div className="collection-hero__copy">
           <p className="eyebrow">OUR PRODUCTS</p>
           <h1 className="display">Many Occasions.<br /><em>One Bottle.</em></h1>
-          <div className="section-rule" />
           <a className="collection-hero__scroll" href="#range">
             Explore the range <ArrowDown size={16} />
           </a>

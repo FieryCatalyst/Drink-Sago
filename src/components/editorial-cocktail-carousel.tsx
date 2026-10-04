@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 
 export interface EditorialCocktail {
   id: string;
@@ -108,8 +108,8 @@ export const SAGO_EDITORIAL_COCKTAILS: EditorialCocktail[] = [
 ];
 
 const BASE_COUNT = SAGO_EDITORIAL_COCKTAILS.length;
-// 5 repeated sets for seamless infinite loop in both directions
-const COPIES = 5;
+// 3 repeated sets for seamless infinite loop (39 total items instead of 65)
+const COPIES = 3;
 const REPEATED_COCKTAILS = Array.from({ length: COPIES }, () => SAGO_EDITORIAL_COCKTAILS).flat();
 
 interface EditorialCocktailCarouselProps {
@@ -126,11 +126,17 @@ export default function EditorialCocktailCarousel({
   const router = useRouter();
   const trackRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLElement | null)[]>([]);
-  // Start centered in the middle copy
-  const [featuredIndex, setFeaturedIndex] = useState(BASE_COUNT * 2);
-  const touchStartXRef = useRef(0);
+  // Start centered on the middle set
+  const [featuredIndex, setFeaturedIndex] = useState(BASE_COUNT);
 
-  const scrollToIndex = (targetIdx: number, smooth = true) => {
+  const isDraggingRef = useRef(false);
+  const dragStartXRef = useRef(0);
+  const dragStartScrollLeftRef = useRef(0);
+  const dragDistanceRef = useRef(0);
+  const lastWheelTimeRef = useRef(0);
+  const isNormalizingRef = useRef(false);
+
+  const scrollToIndex = useCallback((targetIdx: number, smooth = true) => {
     const el = trackRef.current;
     const card = cardRefs.current[targetIdx];
     if (!el || !card) return;
@@ -143,46 +149,41 @@ export default function EditorialCocktailCarousel({
       left: Math.max(0, targetScroll),
       behavior: smooth ? "smooth" : "auto",
     });
-  };
+  }, []);
 
   // Initialize track position centered on middle copy
   useEffect(() => {
-    const timer1 = setTimeout(() => {
-      scrollToIndex(BASE_COUNT * 2, false);
-    }, 50);
-    const timer2 = setTimeout(() => {
-      scrollToIndex(BASE_COUNT * 2, false);
-    }, 250);
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-    };
-  }, []);
+    const timer = setTimeout(() => {
+      scrollToIndex(BASE_COUNT, false);
+    }, 40);
+    return () => clearTimeout(timer);
+  }, [scrollToIndex]);
 
   // Synchronize with external active recipe if provided
   useEffect(() => {
     if (typeof activeRecipeIndex === "number" && activeRecipeIndex >= 0) {
-      const targetIdx = BASE_COUNT * 2 + (activeRecipeIndex % BASE_COUNT);
+      const targetIdx = BASE_COUNT + (activeRecipeIndex % BASE_COUNT);
       scrollToIndex(targetIdx, true);
     }
-  }, [activeRecipeIndex]);
+  }, [activeRecipeIndex, scrollToIndex]);
 
   // Recenter current card on window resize without animation
   useEffect(() => {
     const handleResize = () => {
       scrollToIndex(featuredIndex, false);
     };
-    window.addEventListener("resize", handleResize);
+    window.addEventListener("resize", handleResize, { passive: true });
     return () => window.removeEventListener("resize", handleResize);
-  }, [featuredIndex]);
+  }, [featuredIndex, scrollToIndex]);
 
   // Arrow click handler: moves exactly 1 card per click
-  const scrollByDirection = (direction: "left" | "right") => {
+  const scrollByDirection = useCallback((direction: "left" | "right") => {
     const nextIdx = direction === "left" ? featuredIndex - 1 : featuredIndex + 1;
     scrollToIndex(nextIdx, true);
 
     // Silent seamless wrap normalization
     setTimeout(() => {
+      if (isNormalizingRef.current) return;
       const el = trackRef.current;
       const card0 = cardRefs.current[0];
       const cardN = cardRefs.current[BASE_COUNT];
@@ -191,73 +192,105 @@ export default function EditorialCocktailCarousel({
       const oneSetWidth = cardN.offsetLeft - card0.offsetLeft;
       if (oneSetWidth <= 0) return;
 
-      if (nextIdx >= BASE_COUNT * 3.5) {
+      if (nextIdx >= BASE_COUNT * 2) {
+        isNormalizingRef.current = true;
         el.scrollTo({ left: el.scrollLeft - oneSetWidth, behavior: "auto" });
         setFeaturedIndex(nextIdx - BASE_COUNT);
-      } else if (nextIdx <= BASE_COUNT * 1.5) {
+        isNormalizingRef.current = false;
+      } else if (nextIdx < BASE_COUNT) {
+        isNormalizingRef.current = true;
         el.scrollTo({ left: el.scrollLeft + oneSetWidth, behavior: "auto" });
         setFeaturedIndex(nextIdx + BASE_COUNT);
+        isNormalizingRef.current = false;
       }
-    }, 450);
-  };
+    }, 300);
+  }, [featuredIndex, scrollToIndex]);
 
-  // Touch swipe support (discrete single-card step)
+  const snapToClosest = useCallback(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const center = el.scrollLeft + el.clientWidth / 2;
+    let closestIdx = featuredIndex;
+    let minDiff = Infinity;
+    cardRefs.current.forEach((card, idx) => {
+      if (!card) return;
+      const cardCenter = card.offsetLeft + card.clientWidth / 2;
+      const diff = Math.abs(cardCenter - center);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closestIdx = idx;
+      }
+    });
+    scrollToIndex(closestIdx, true);
+  }, [featuredIndex, scrollToIndex]);
+
+  // Touch handlers with real-time tracking
   const onTouchStart = (e: React.TouchEvent) => {
-    touchStartXRef.current = e.touches[0].clientX;
+    isDraggingRef.current = true;
+    dragStartXRef.current = e.touches[0].clientX;
+    dragStartScrollLeftRef.current = trackRef.current ? trackRef.current.scrollLeft : 0;
+    dragDistanceRef.current = 0;
   };
 
-  const onTouchEnd = (e: React.TouchEvent) => {
-    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
-    if (deltaX < -30) {
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (!isDraggingRef.current || !trackRef.current) return;
+    const deltaX = e.touches[0].clientX - dragStartXRef.current;
+    dragDistanceRef.current = deltaX;
+    trackRef.current.scrollLeft = dragStartScrollLeftRef.current - deltaX;
+  };
+
+  const onTouchEnd = () => {
+    if (!isDraggingRef.current) return;
+    isDraggingRef.current = false;
+    const dist = dragDistanceRef.current;
+    if (dist < -35) {
       scrollByDirection("right");
-    } else if (deltaX > 30) {
+    } else if (dist > 35) {
       scrollByDirection("left");
+    } else {
+      snapToClosest();
     }
   };
 
-  // Mouse drag to slide navigation
-  const isDraggingRef = useRef(false);
-  const dragStartXRef = useRef(0);
-  const dragDistanceRef = useRef(0);
-  const lastWheelTimeRef = useRef(0);
-
+  // Mouse drag handlers with real-time 1:1 responsive tracking
   const onMouseDown = (e: React.MouseEvent) => {
     isDraggingRef.current = true;
     dragStartXRef.current = e.clientX;
+    dragStartScrollLeftRef.current = trackRef.current ? trackRef.current.scrollLeft : 0;
     dragDistanceRef.current = 0;
   };
 
   const onMouseMove = (e: React.MouseEvent) => {
-    if (!isDraggingRef.current) return;
-    dragDistanceRef.current = e.clientX - dragStartXRef.current;
+    if (!isDraggingRef.current || !trackRef.current) return;
+    const deltaX = e.clientX - dragStartXRef.current;
+    dragDistanceRef.current = deltaX;
+    trackRef.current.scrollLeft = dragStartScrollLeftRef.current - deltaX;
   };
 
   const onMouseUp = () => {
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
-    if (dragDistanceRef.current < -30) {
+    const dist = dragDistanceRef.current;
+    if (dist < -35) {
       scrollByDirection("right");
-    } else if (dragDistanceRef.current > 30) {
+    } else if (dist > 35) {
       scrollByDirection("left");
+    } else if (Math.abs(dist) > 5) {
+      snapToClosest();
     }
   };
 
   const onMouseLeave = () => {
     if (isDraggingRef.current) {
-      isDraggingRef.current = false;
-      if (dragDistanceRef.current < -30) {
-        scrollByDirection("right");
-      } else if (dragDistanceRef.current > 30) {
-        scrollByDirection("left");
-      }
+      onMouseUp();
     }
   };
 
   // Trackpad / wheel horizontal swipe
   const onWheel = (e: React.WheelEvent) => {
-    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 20) {
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 15) {
       const now = Date.now();
-      if (now - lastWheelTimeRef.current > 320) {
+      if (now - lastWheelTimeRef.current > 240) {
         lastWheelTimeRef.current = now;
         if (e.deltaX > 0) {
           scrollByDirection("right");
@@ -269,7 +302,7 @@ export default function EditorialCocktailCarousel({
   };
 
   const handleCardClick = (index: number) => {
-    if (Math.abs(dragDistanceRef.current) > 10) return;
+    if (Math.abs(dragDistanceRef.current) > 8) return;
     if (index === featuredIndex) {
       const originalIndex = index % BASE_COUNT;
       if (onSelectRecipe) {
@@ -278,7 +311,6 @@ export default function EditorialCocktailCarousel({
         router.push(`/cocktails`);
       }
     } else {
-      // Move directly to the clicked card
       scrollToIndex(index, true);
     }
   };
@@ -308,6 +340,7 @@ export default function EditorialCocktailCarousel({
         ref={trackRef}
         className="editorial-carousel-track"
         onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
@@ -324,6 +357,7 @@ export default function EditorialCocktailCarousel({
       >
         {REPEATED_COCKTAILS.map((cocktail, index) => {
           const isFeatured = index === featuredIndex;
+          const isNearby = Math.abs(index - featuredIndex) <= 2;
           return (
             <article
               key={`${cocktail.id}-${index}`}
@@ -347,9 +381,10 @@ export default function EditorialCocktailCarousel({
                   src={cocktail.image}
                   alt={cocktail.name}
                   fill
-                  sizes={isFeatured ? "(max-width: 800px) 85vw, 450px" : "(max-width: 800px) 75vw, 360px"}
+                  sizes={isFeatured ? "(max-width: 800px) 85vw, 420px" : "(max-width: 800px) 75vw, 340px"}
                   className="editorial-card__img"
                   draggable={false}
+                  loading={isNearby ? "eager" : "lazy"}
                 />
               </div>
 

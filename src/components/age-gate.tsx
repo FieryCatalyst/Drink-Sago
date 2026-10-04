@@ -8,15 +8,22 @@ import { COUNTRIES, getLegalDrinkingAge } from "@/lib/countries";
 
 const AGE_GATE_KEY = "sago-age-verified";
 
+function setAgeVerificationCookie() {
+  document.cookie = "sago-age-verified=true; path=/; max-age=31536000; samesite=lax";
+}
+
 export default function AgeGate({ children }: { children: React.ReactNode }) {
   const [verified, setVerified] = useState<boolean | null>(null);
+  const [isExiting, setIsExiting] = useState(false);
   const [birthYear, setBirthYear] = useState("");
   const [country, setCountry] = useState("Zambia");
   const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
-      setVerified(window.localStorage.getItem(AGE_GATE_KEY) === "true");
+      const isVerified = window.localStorage.getItem(AGE_GATE_KEY) === "true";
+      if (isVerified) setAgeVerificationCookie();
+      setVerified(isVerified);
     });
     return () => window.cancelAnimationFrame(frame);
   }, []);
@@ -33,17 +40,31 @@ export default function AgeGate({ children }: { children: React.ReactNode }) {
       return;
     }
     window.localStorage.setItem(AGE_GATE_KEY, "true");
-    setVerified(true);
+    setAgeVerificationCookie();
+    setIsExiting(true);
+    setTimeout(() => {
+      setVerified(true);
+      setIsExiting(false);
+    }, 650);
   };
 
   if (verified === null) {
     return <div className="age-gate-loading" aria-hidden="true" />;
   }
 
-  if (verified) return <>{children}</>;
-
   return (
-    <div className="age-gate" role="dialog" aria-modal="true" aria-labelledby="age-gate-title">
+    <>
+      <div className={`age-gate-content-wrap ${!verified && !isExiting ? "is-under-gate" : ""}`}>
+        {children}
+      </div>
+
+      {!verified && (
+        <div
+          className={`age-gate ${isExiting ? "is-exiting" : ""}`}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="age-gate-title"
+        >
       <div className="age-gate__bg">
         <Image
           src="/assets/8.png"
@@ -120,5 +141,7 @@ export default function AgeGate({ children }: { children: React.ReactNode }) {
         <p className="age-gate__responsible">Please drink Sago responsibly.</p>
       </div>
     </div>
+      )}
+    </>
   );
 }

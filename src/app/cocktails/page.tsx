@@ -137,8 +137,8 @@ export default function CocktailsPage() {
 
       <AnimatePresence mode="wait" initial={false}>
         {selected && (
-          <motion.section key={selected.name} id="recipe-detail" className="recipe-detail section-pad" initial={reduceMotion ? false : { opacity: 0, y: 32 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -20 }} transition={reduceMotion ? { duration: 0 } : { duration: .65, ease: [0.16, 1, 0.3, 1] }}>
-            <motion.div className="recipe-detail__image" initial={reduceMotion ? false : { scale: .97, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={reduceMotion ? { duration: 0 } : { duration: .7, delay: .05, ease: [0.16, 1, 0.3, 1] }}>
+          <motion.section key={selected.name} id="recipe-detail" className="recipe-detail section-pad" initial={reduceMotion ? false : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -12 }} transition={reduceMotion ? { duration: 0 } : { duration: .32, ease: [0.16, 1, 0.3, 1] }}>
+            <motion.div className="recipe-detail__image" initial={reduceMotion ? false : { scale: .98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={reduceMotion ? { duration: 0 } : { duration: .35, ease: [0.16, 1, 0.3, 1] }}>
               <Image src={selected.image} alt={selected.name} fill sizes="(max-width: 800px) 100vw, 45vw" />
             </motion.div>
             <div className="recipe-detail__copy">

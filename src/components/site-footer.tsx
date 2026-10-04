@@ -71,7 +71,7 @@ export default function SiteFooter() {
         </form>
       </div>
       <div className="footer-bottom">
-        <span>© 2026 SAGO — The House of Premium Spirits</span>
+        <span>© 2026 SAGO | The House of Premium Spirits</span>
         <span>Drink responsibly. Please enjoy Sago in moderation.</span>
         <span>
           <Link href="/privacy">Privacy</Link> · <Link href="/cookies">Cookies</Link> · <Link href="/terms">Terms</Link> · <Link href="/refunds">Refunds</Link> · <Link href="/accessibility">Accessibility</Link>

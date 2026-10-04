@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Asul, Montserrat } from "next/font/google";
 import AgeGate from "@/components/age-gate";
 import AnalyticsConsent from "@/components/analytics-consent";
+import SmoothScroll from "@/components/smooth-scroll";
 import "./globals.css";
 
 // Primary font: Asul (normal + bold) — per client brief
@@ -20,7 +21,7 @@ const displayFont = Montserrat({
 
 export const metadata: Metadata = {
   title: "SAGO | The House of Premium Spirits",
-  description: "Celebrate every moment with SAGO — The House of Premium Spirits.",
+  description: "Celebrate every moment with SAGO | The House of Premium Spirits.",
   metadataBase: new URL("https://sago.world"),
   alternates: { canonical: "/" },
   icons: {
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "SAGO | The House of Premium Spirits",
-    description: "Celebrate every moment with SAGO — The House of Premium Spirits.",
+    description: "Celebrate every moment with SAGO | The House of Premium Spirits.",
     type: "website",
     images: ["/assets/Sago Logo.png"],
   },
@@ -46,8 +47,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col">
         <AgeGate>
-          {children}
-          <AnalyticsConsent />
+          <SmoothScroll>
+            {children}
+            <AnalyticsConsent />
+          </SmoothScroll>
         </AgeGate>
       </body>
     </html>

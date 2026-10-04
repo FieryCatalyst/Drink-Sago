@@ -43,7 +43,25 @@ export default function Home() {
 
     handleHash();
     window.addEventListener("hashchange", handleHash);
-    return () => window.removeEventListener("hashchange", handleHash);
+
+    const handleAnchorClick = (e: MouseEvent) => {
+      const anchor = (e.target as HTMLElement).closest('a[href^="#"]');
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href || href === "#") return;
+      const target = document.querySelector(href);
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: "smooth" });
+        window.history.pushState(null, "", href);
+      }
+    };
+    document.addEventListener("click", handleAnchorClick);
+
+    return () => {
+      window.removeEventListener("hashchange", handleHash);
+      document.removeEventListener("click", handleAnchorClick);
+    };
   }, []);
 
   const filteredRetailers = retailers.filter(
@@ -68,7 +86,7 @@ export default function Home() {
         <section className="home-hero">
           <Image
             src="/assets/2.png"
-            alt="SAGO — The House of Premium Spirits"
+            alt="SAGO | The House of Premium Spirits"
             fill
             priority
             sizes="100vw"
@@ -146,7 +164,7 @@ export default function Home() {
                 <div className="home-product__image">
                   <Image
                     src={product.image}
-                    alt={`${product.name} — Sago`}
+                    alt={`${product.name} | Sago`}
                     fill
                     sizes="(max-width: 800px) 86vw, 45vw"
                   />
