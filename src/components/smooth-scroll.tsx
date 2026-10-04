@@ -36,8 +36,9 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
       if (href && href.startsWith("#") && href.length > 1) {
         const id = href.slice(1);
         let targetEl: HTMLElement | null = null;
+        let decodedId = id;
         try {
-          const decodedId = decodeURIComponent(id);
+          decodedId = decodeURIComponent(id);
           targetEl = document.getElementById(decodedId);
           if (!targetEl && typeof CSS !== "undefined" && typeof CSS.escape === "function") {
             targetEl = document.querySelector<HTMLElement>(`#${CSS.escape(decodedId)}`);
@@ -47,6 +48,8 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
         }
         if (targetEl) {
           e.preventDefault();
+          // Keep the fragment in the URL so it can be copied and restored via history
+          window.history.pushState(null, "", `#${encodeURIComponent(decodedId)}`);
           lenis.scrollTo(targetEl, { offset: -60, duration: 1.2 });
         }
       }

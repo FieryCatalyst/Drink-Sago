@@ -223,12 +223,11 @@ export async function POST(request: Request) {
 
       // Map tier, bottle_discount, and shot_discount according to SAGO Reward Hierarchy
       const rawTier = (reward.tier ?? "").trim().toUpperCase();
-      const matchedTier = SAGO_REWARD_HIERARCHY.find(
-        (t) =>
-          t.tier === rawTier ||
-          t.bottleDiscount === Number(reward.discount_value) ||
-          reward.name.toUpperCase().includes(t.tier)
-      );
+      const upperName = reward.name.toUpperCase();
+      const matchedTier =
+        SAGO_REWARD_HIERARCHY.find((t) => t.tier === rawTier) ??
+        SAGO_REWARD_HIERARCHY.find((t) => t.bottleDiscount === Number(reward.discount_value)) ??
+        SAGO_REWARD_HIERARCHY.find((t) => upperName.includes(t.tier));
 
       const tier = (matchedTier?.tier ?? (rawTier as "HIGH" | "MID+" | "MID" | "LOW+" | "LOW")) || "LOW";
       const bottleDiscount =
