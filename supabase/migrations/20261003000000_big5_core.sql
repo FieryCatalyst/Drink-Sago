@@ -237,6 +237,10 @@ set search_path = public
 as $$
 declare
   locked_session public.game_sessions%rowtype;
+  target_campaign public.campaigns%rowtype;
+  session_play_limit int;
+  max_coupons_limit int;
+  customer_coupon_count int;
   created_play_id uuid;
   created_coupon_id uuid;
 begin
@@ -253,8 +257,55 @@ begin
     raise exception 'GAME_SESSION_INACTIVE';
   end if;
 
+  select * into target_campaign
+  from public.campaigns
+  where id = locked_session.campaign_id;
+
+  -- Enforce campaign-configured per-session play limit
+  session_play_limit := coalesce(
+    (target_campaign.commercial_rules->>'max_plays_per_session')::int,
+    (target_campaign.commercial_rules->>'session_play_limit')::int,
+    (target_campaign.commercial_rules->>'play_limit_per_session')::int,
+    (target_campaign.commercial_rules->>'max_plays')::int
+  );
+
+  if session_play_limit is not null and locked_session.play_count >= session_play_limit then
+    update public.game_sessions
+    set status = 'CLOSED'
+    where id = locked_session.id;
+    raise exception 'SESSION_PLAY_LIMIT_REACHED';
+  end if;
+
+  -- Enforce maximum coupons per customer and campaign
+  max_coupons_limit := coalesce(
+    (target_campaign.commercial_rules->>'max_coupons_per_customer')::int,
+    (target_campaign.commercial_rules->>'max_coupons_per_customer_campaign')::int,
+    (target_campaign.commercial_rules->>'max_coupons')::int,
+    (target_campaign.commercial_rules->>'coupons_per_customer')::int
+  );
+
+  if max_coupons_limit is not null then
+    perform 1
+    from public.customers
+    where id = locked_session.customer_id
+    for update;
+
+    select count(*) into customer_coupon_count
+    from public.coupons
+    where customer_id = locked_session.customer_id
+      and campaign_id = locked_session.campaign_id;
+
+    if customer_coupon_count >= max_coupons_limit then
+      raise exception 'CUSTOMER_COUPON_LIMIT_REACHED';
+    end if;
+  end if;
+
   update public.game_sessions
-  set play_count = play_count + 1
+  set play_count = play_count + 1,
+      status = case
+        when session_play_limit is not null and (play_count + 1) >= session_play_limit then 'CLOSED'::public.session_status
+        else status
+      end
   where id = locked_session.id;
 
   insert into public.plays (

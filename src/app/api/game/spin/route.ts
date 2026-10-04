@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { hasSupabaseServerEnv } from "@/lib/env";
-import { drawOutcomeFromHierarchy, generateCouponCode } from "@/lib/game/demo-data";
+import { drawOutcomeFromHierarchy, generateCouponCode, SAGO_REWARD_HIERARCHY } from "@/lib/game/demo-data";
 
 type Reward = {
   discount_value: number | null;
@@ -12,20 +12,29 @@ type Reward = {
   name: string;
   probability_config: { weight?: number } | null;
   reward_type: string;
+  tier?: string | null;
 };
 
-function chooseReward(rewards: Reward[]): Reward {
-  const weighted = rewards.map((reward) => ({
-    reward,
-    weight: Number(reward.probability_config?.weight ?? 1),
-  }));
-  const totalWeight = weighted.reduce((total, entry) => total + (entry.weight > 0 ? entry.weight : 1), 0);
+function chooseReward(rewards: Reward[]): Reward | null {
+  const eligible = rewards
+    .map((reward) => {
+      const rawWeight = reward.probability_config?.weight;
+      const weight = typeof rawWeight === "number" ? rawWeight : Number(rawWeight);
+      return { reward, weight };
+    })
+    .filter((entry) => Number.isFinite(entry.weight) && entry.weight > 0);
+
+  if (eligible.length === 0) return null;
+
+  const totalWeight = eligible.reduce((total, entry) => total + entry.weight, 0);
+  if (totalWeight <= 0 || !Number.isFinite(totalWeight)) return null;
+
   let cursor = (randomInt(1_000_000) / 1_000_000) * totalWeight;
-  for (const entry of weighted) {
-    cursor -= entry.weight > 0 ? entry.weight : 1;
+  for (const entry of eligible) {
+    cursor -= entry.weight;
     if (cursor <= 0) return entry.reward;
   }
-  return weighted[weighted.length - 1].reward;
+  return eligible[eligible.length - 1].reward;
 }
 
 function secureCode() {
@@ -96,10 +105,16 @@ async function generateDemoSpin() {
 export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => ({}))) as { session_id?: unknown };
+    const campaignSlug = process.env.SAGO_CAMPAIGN_SLUG;
+    const isDemoSessionId = typeof body.session_id === "string" && body.session_id.startsWith("demo-session-");
 
-    if (!hasSupabaseServerEnv()) {
+    if (!hasSupabaseServerEnv() || !campaignSlug || isDemoSessionId) {
       const demoResult = await generateDemoSpin();
       return NextResponse.json(demoResult);
+    }
+
+    if (!body.session_id || typeof body.session_id !== "string") {
+      return NextResponse.json({ error: "Missing or invalid session_id" }, { status: 400 });
     }
 
     try {
@@ -111,28 +126,62 @@ export async function POST(request: Request) {
         .maybeSingle();
 
       if (sessionError || !session) {
-        const demoResult = await generateDemoSpin();
-        return NextResponse.json(demoResult);
+        if (!campaignSlug || isDemoSessionId) {
+          const demoResult = await generateDemoSpin();
+          return NextResponse.json(demoResult);
+        }
+        return NextResponse.json(
+          { error: sessionError?.message || "Session not found" },
+          { status: 404 }
+        );
       }
 
       const campaign = Array.isArray(session.campaigns) ? session.campaigns[0] : session.campaigns;
       const venue = Array.isArray(session.venues) ? session.venues[0] : session.venues;
-      if (session.status !== "ACTIVE" || !venue?.active || !campaign) {
-        const demoResult = await generateDemoSpin();
-        return NextResponse.json(demoResult);
+      const now = new Date();
+
+      const isCampaignActive = campaign && campaign.status === "active";
+      const isWithinCampaignDates =
+        (!campaign?.start_at || new Date(campaign.start_at) <= now) &&
+        (!campaign?.end_at || new Date(campaign.end_at) >= now);
+      const isSessionUnexpired = !session.expires_at || new Date(session.expires_at) >= now;
+      const isSessionActive = session.status === "ACTIVE";
+      const isVenueActive = Boolean(venue?.active);
+
+      if (!isCampaignActive || !isWithinCampaignDates || !isSessionActive || !isSessionUnexpired || !isVenueActive) {
+        return NextResponse.json(
+          { error: "Session or campaign is not active, outside scheduled dates, or expired" },
+          { status: 400 }
+        );
       }
 
       const [{ data: symbols, error: symbolsError }, { data: rewards, error: rewardsError }] = await Promise.all([
         supabase.from("symbols").select("name").eq("campaign_id", session.campaign_id).eq("active", true),
-        supabase.from("rewards").select("id, name, reward_type, discount_value, eligible_product, probability_config").eq("campaign_id", session.campaign_id).eq("active", true),
+        supabase.from("rewards").select("id, name, reward_type, discount_value, eligible_product, probability_config, tier").eq("campaign_id", session.campaign_id).eq("active", true),
       ]);
 
-      if (symbolsError || rewardsError || !symbols || symbols.length < 5 || !rewards || rewards.length === 0) {
-        const demoResult = await generateDemoSpin();
-        return NextResponse.json(demoResult);
+      if (symbolsError || !symbols || symbols.length < 5) {
+        return NextResponse.json(
+          { error: symbolsError?.message || "Active symbols not configured (minimum 5 required)" },
+          { status: 500 }
+        );
+      }
+
+      if (rewardsError || !rewards || rewards.length === 0) {
+        return NextResponse.json(
+          { error: rewardsError?.message || "Active rewards not configured" },
+          { status: 500 }
+        );
       }
 
       const reward = chooseReward(rewards as Reward[]);
+      if (!reward) {
+        return NextResponse.json(
+          { error: "No eligible rewards available for selection" },
+          { status: 500 }
+        );
+      }
+
       const symbolNames = symbols.map((symbol: { name: string }) => symbol.name);
       const result = [
         symbolNames[randomInt(symbolNames.length)],
@@ -160,8 +209,10 @@ export async function POST(request: Request) {
       });
 
       if (issueError || !issued?.[0]) {
-        const demoResult = await generateDemoSpin();
-        return NextResponse.json(demoResult);
+        return NextResponse.json(
+          { error: issueError?.message || "Failed to issue game play" },
+          { status: 500 }
+        );
       }
 
       const qrUrl = await QRCode.toDataURL(JSON.stringify({ token: code }), {
@@ -170,10 +221,32 @@ export async function POST(request: Request) {
         width: 240,
       });
 
+      // Map tier, bottle_discount, and shot_discount according to SAGO Reward Hierarchy
+      const rawTier = (reward.tier ?? "").trim().toUpperCase();
+      const matchedTier = SAGO_REWARD_HIERARCHY.find(
+        (t) =>
+          t.tier === rawTier ||
+          t.bottleDiscount === Number(reward.discount_value) ||
+          reward.name.toUpperCase().includes(t.tier)
+      );
+
+      const tier = (matchedTier?.tier ?? (rawTier as "HIGH" | "MID+" | "MID" | "LOW+" | "LOW")) || "LOW";
+      const bottleDiscount =
+        reward.discount_value != null && Number.isFinite(Number(reward.discount_value))
+          ? Number(reward.discount_value)
+          : (matchedTier?.bottleDiscount ?? 5);
+      const shotDiscount =
+        matchedTier?.shotDiscount ??
+        (bottleDiscount >= 25 ? 50 : bottleDiscount >= 20 ? 25 : bottleDiscount >= 15 ? 20 : bottleDiscount >= 10 ? 15 : 10);
+
       return NextResponse.json({
         result_1: result[0],
         result_2: result[1],
         result_3: result[2],
+        tier,
+        bottle_discount: bottleDiscount,
+        shot_discount: shotDiscount,
+        is_demo: false,
         coupon: {
           code,
           coupon_id: issued[0].coupon_id,
@@ -181,16 +254,23 @@ export async function POST(request: Request) {
           expires_at: issued[0].expires_at,
           qr_url: qrUrl,
           reward: reward.name,
+          tier,
+          bottle_discount: bottleDiscount,
+          shot_discount: shotDiscount,
         },
       });
     } catch (dbErr) {
-      console.warn("Database spin error, falling back to demo result:", dbErr);
-      const demoResult = await generateDemoSpin();
-      return NextResponse.json(demoResult);
+      console.error("Database spin error:", dbErr);
+      return NextResponse.json(
+        { error: dbErr instanceof Error ? dbErr.message : "Database spin error" },
+        { status: 500 }
+      );
     }
   } catch (error) {
     console.error("Spin error:", error);
-    const demoResult = await generateDemoSpin();
-    return NextResponse.json(demoResult);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unexpected spin error" },
+      { status: 500 }
+    );
   }
 }

@@ -16,6 +16,14 @@ export async function POST(request: Request) {
     const email = typeof body.email === "string" ? body.email.trim() : "";
     const venueId = typeof body.venue_id === "string" ? body.venue_id.trim() : "";
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!name || !email || !emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: "Invalid registration details: valid name and email required" },
+        { status: 400 }
+      );
+    }
+
     const selectedVenue =
       DEMO_VENUES.find((v) => v.id === venueId) ??
       DEMO_VENUES[0];
@@ -63,28 +71,51 @@ export async function POST(request: Request) {
       }
 
       const emailNormalized = email.toLowerCase();
-      const { data: customer, error: customerError } = await supabase
+      const { data: existingCustomer, error: findError } = await supabase
         .from("customers")
-        .upsert({ email, email_normalized: emailNormalized, name }, { onConflict: "email_normalized" })
         .select("id")
-        .single();
+        .eq("email_normalized", emailNormalized)
+        .maybeSingle();
 
-      if (customerError) throw customerError;
+      if (findError) throw findError;
+
+      let customerId = existingCustomer?.id;
+      if (!customerId) {
+        const { data: newCustomer, error: customerError } = await supabase
+          .from("customers")
+          .insert({ email, email_normalized: emailNormalized, name })
+          .select("id")
+          .single();
+
+        if (customerError) {
+          const { data: retryCustomer, error: retryError } = await supabase
+            .from("customers")
+            .select("id")
+            .eq("email_normalized", emailNormalized)
+            .single();
+          if (retryError) throw customerError;
+          customerId = retryCustomer.id;
+        } else {
+          customerId = newCustomer.id;
+        }
+      }
 
       const consent = Boolean(body.marketing_consent);
-      await supabase.from("consents").insert({
+      const { error: consentError } = await supabase.from("consents").insert({
         campaign_id: campaign.id,
         consent_timestamp: consent ? new Date().toISOString() : null,
-        customer_id: customer.id,
+        customer_id: customerId,
         marketing_consent: consent,
         privacy_version: process.env.SAGO_PRIVACY_VERSION ?? null,
         source: typeof body.source === "string" ? body.source : "promotions",
         terms_version: process.env.SAGO_TERMS_VERSION ?? null,
       });
 
+      if (consentError) throw consentError;
+
       const { data: session, error: sessionError } = await supabase
         .from("game_sessions")
-        .insert({ campaign_id: campaign.id, customer_id: customer.id, venue_id: venueId })
+        .insert({ campaign_id: campaign.id, customer_id: customerId, venue_id: venueId })
         .select("id")
         .single();
 

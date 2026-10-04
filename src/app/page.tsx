@@ -44,23 +44,8 @@ export default function Home() {
     handleHash();
     window.addEventListener("hashchange", handleHash);
 
-    const handleAnchorClick = (e: MouseEvent) => {
-      const anchor = (e.target as HTMLElement).closest('a[href^="#"]');
-      if (!anchor) return;
-      const href = anchor.getAttribute("href");
-      if (!href || href === "#") return;
-      const target = document.querySelector(href);
-      if (target) {
-        e.preventDefault();
-        target.scrollIntoView({ behavior: "smooth" });
-        window.history.pushState(null, "", href);
-      }
-    };
-    document.addEventListener("click", handleAnchorClick);
-
     return () => {
       window.removeEventListener("hashchange", handleHash);
-      document.removeEventListener("click", handleAnchorClick);
     };
   }, []);
 

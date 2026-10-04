@@ -166,9 +166,16 @@ export default function SagoSlotMachine() {
         if (!response.ok) return;
         const data = (await response.json()) as { venues?: Venue[] };
         if (data.venues && data.venues.length > 0) {
-          setVenues(data.venues);
-          setVenueId((prev) => prev || data.venues![0].id);
-          setSelectedVenueName(`${data.venues[0].name} · ${data.venues[0].city}`);
+          const apiVenues = data.venues;
+          setVenues(apiVenues);
+          setVenueId((currentId) => {
+            const currentExists = apiVenues.some((v) => v.id === currentId);
+            const chosenVenue = currentExists
+              ? apiVenues.find((v) => v.id === currentId)!
+              : apiVenues[0];
+            setSelectedVenueName(`${chosenVenue.name} · ${chosenVenue.city}`);
+            return chosenVenue.id;
+          });
         }
       })
       .catch(() => {
@@ -728,14 +735,17 @@ export default function SagoSlotMachine() {
               
               {/* Hierarchy Tier Badge */}
               <div className="slot-result__tier-badge">
+                {result.is_demo && <span className="slot-result__tier-demo">DEMO</span>}
                 <span className="slot-result__tier-name">TIER {result.coupon.tier ?? result.tier ?? "LOW"}</span>
                 <span className="slot-result__tier-dot">·</span>
                 <span className="slot-result__tier-notes">
-                  {result.coupon.notes ?? "SAGO Reward Hierarchy"}
+                  {result.is_demo ? "Demo Mode" : (result.coupon.notes ?? "SAGO Reward Hierarchy")}
                 </span>
               </div>
 
-              <p className="eyebrow">Your SAGO Invitation Pass</p>
+              <p className="eyebrow">
+                {result.is_demo ? "Demo Invitation Pass · Offline Preview" : "Your SAGO Invitation Pass"}
+              </p>
               <h3>Your night<br /><em>has spoken.</em></h3>
 
               {/* Dual Discounts according to SAGO Reward Hierarchy */}

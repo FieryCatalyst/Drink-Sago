@@ -34,10 +34,20 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
       if (!anchor) return;
       const href = anchor.getAttribute("href");
       if (href && href.startsWith("#") && href.length > 1) {
-        const targetEl = document.querySelector(href);
+        const id = href.slice(1);
+        let targetEl: HTMLElement | null = null;
+        try {
+          const decodedId = decodeURIComponent(id);
+          targetEl = document.getElementById(decodedId);
+          if (!targetEl && typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+            targetEl = document.querySelector<HTMLElement>(`#${CSS.escape(decodedId)}`);
+          }
+        } catch {
+          targetEl = document.getElementById(id);
+        }
         if (targetEl) {
           e.preventDefault();
-          lenis.scrollTo(targetEl as HTMLElement, { offset: -60, duration: 1.2 });
+          lenis.scrollTo(targetEl, { offset: -60, duration: 1.2 });
         }
       }
     };

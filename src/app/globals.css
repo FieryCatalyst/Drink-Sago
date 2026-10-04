@@ -2799,6 +2799,12 @@ h1 em, h2 em, h3 em, .display em { color: var(--brass); font-style: normal; }
   transition: transform 0.1s ease, filter 0.2s ease;
 }
 
+.slot-gold-btn:focus-visible {
+  outline: 3px solid #ffeb3b;
+  outline-offset: 3px;
+  box-shadow: 0 0 10px rgba(255, 235, 59, 0.7);
+}
+
 .slot-gold-btn--sub {
   background: radial-gradient(circle at 35% 35%, #fff 0%, #ffd700 45%, #885c08 80%, #442e03 100%);
   box-shadow:
@@ -2940,6 +2946,12 @@ h1 em, h2 em, h3 em, .display em { color: var(--brass); font-style: normal; }
   user-select: none;
   width: 78px;
   z-index: 10;
+}
+
+.slot-lever:focus-visible {
+  outline: 3px solid #ffeb3b;
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 
 .slot-lever.is-disabled {
@@ -3120,6 +3132,16 @@ h1 em, h2 em, h3 em, .display em { color: var(--brass); font-style: normal; }
   margin: 0 auto 1.1rem;
   padding: 0.35rem 0.85rem;
   text-transform: uppercase;
+}
+
+.slot-result__tier-demo {
+  background: var(--oxblood);
+  border-radius: 2px;
+  color: var(--ivory);
+  font-size: 0.44rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.15rem 0.4rem;
 }
 
 .slot-result__tier-name {
@@ -3491,7 +3513,7 @@ h1 em, h2 em, h3 em, .display em { color: var(--brass); font-style: normal; }
     border-radius: 16px 16px 6px 6px;
     border-width: 2px;
   }
-  .slot-crown {
+  .slot-cabinet__crown {
     padding: 0.5rem 0.5rem 0.4rem;
   }
   .slot-crown__arch-frame {
@@ -3567,7 +3589,7 @@ h1 em, h2 em, h3 em, .display em { color: var(--brass); font-style: normal; }
     font-size: 0.46rem;
     padding: 0.18rem 0.45rem;
   }
-  .slot-dashboard {
+  .slot-cabinet__dashboard {
     border-top-width: 2px;
     padding: 0.6rem 0.5rem 0.75rem;
   }
