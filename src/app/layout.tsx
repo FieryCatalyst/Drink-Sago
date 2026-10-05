@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Asul, Montserrat } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import AgeGate from "@/components/age-gate";
 import AnalyticsConsent from "@/components/analytics-consent";
 import SmoothScroll from "@/components/smooth-scroll";
@@ -64,6 +65,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <AnalyticsConsent />
           </SmoothScroll>
         </AgeGate>
+        <Analytics />
       </body>
     </html>
   );
