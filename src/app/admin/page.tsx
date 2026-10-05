@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -59,6 +59,9 @@ export default function AdminPage() {
   const [authError, setAuthError] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
 
+  // Track current auth generation to invalidate stale loads
+  const authGenerationRef = useRef(0);
+
   // Dashboard Data
   const [members, setMembers] = useState<Member[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -79,7 +82,7 @@ export default function AdminPage() {
     setTimeout(() => setToastMessage(null), 2500);
   }, []);
 
-  const loadData = useCallback(async (token: string) => {
+  const loadData = useCallback(async (token: string, generation: number) => {
     setIsLoading(true);
     setLoadError("");
 
@@ -96,16 +99,23 @@ export default function AdminPage() {
         throw new Error(data.error || "Failed to load collective data.");
       }
 
-      setIsAuthenticated(true);
-      setMembers(data.members || []);
-      setStats(data.stats || null);
+      // Only apply results if this is still the current auth generation
+      if (generation === authGenerationRef.current) {
+        setIsAuthenticated(true);
+        setMembers(data.members || []);
+        setStats(data.stats || null);
+      }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Authentication failed";
-      setAuthError(msg);
-      setIsAuthenticated(false);
+      if (generation === authGenerationRef.current) {
+        const msg = err instanceof Error ? err.message : "Authentication failed";
+        setAuthError(msg);
+        setIsAuthenticated(false);
+      }
     } finally {
-      setIsLoading(false);
-      setIsVerifying(false);
+      if (generation === authGenerationRef.current) {
+        setIsLoading(false);
+        setIsVerifying(false);
+      }
     }
   }, []);
 
@@ -120,7 +130,8 @@ export default function AdminPage() {
         if (data?.session?.access_token && isMounted) {
           setAuthToken(data.session.access_token);
           setUserEmail(data.session.user.email || "Admin");
-          loadData(data.session.access_token);
+          const gen = ++authGenerationRef.current;
+          loadData(data.session.access_token, gen);
           setIsAuthenticated(true);
         }
       } catch {
@@ -132,6 +143,25 @@ export default function AdminPage() {
 
     return () => {
       isMounted = false;
+    };
+  }, [loadData]);
+
+  // Listen for token refresh events to keep auth token in sync
+  useEffect(() => {
+    const client = getBrowserSupabase();
+    const { data: listener } = client.auth.onAuthStateChange((event, session) => {
+      if (event === "TOKEN_REFRESHED" && session?.access_token) {
+        setAuthToken(session.access_token);
+        setUserEmail(session.user?.email || "Admin");
+        const gen = ++authGenerationRef.current;
+        loadData(session.access_token, gen);
+      } else if (event === "SIGNED_OUT") {
+        authGenerationRef.current += 1;
+      }
+    });
+
+    return () => {
+      listener?.subscription.unsubscribe();
     };
   }, [loadData]);
 
@@ -160,7 +190,8 @@ export default function AdminPage() {
 
       setAuthToken(data.session.access_token);
       setUserEmail(data.user?.email || email);
-      await loadData(data.session.access_token);
+      const gen = ++authGenerationRef.current;
+      await loadData(data.session.access_token, gen);
       showToast(`Welcome back, ${data.user?.email || "Admin"}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Login failed";
@@ -177,6 +208,7 @@ export default function AdminPage() {
       // Ignored
     }
 
+    authGenerationRef.current += 1;
     setIsAuthenticated(false);
     setAuthToken("");
     setUserEmail("");
@@ -188,7 +220,8 @@ export default function AdminPage() {
 
   const reloadData = () => {
     if (!authToken) return;
-    loadData(authToken);
+    const gen = ++authGenerationRef.current;
+    loadData(authToken, gen);
     showToast("Refreshed from database");
   };
 
@@ -242,16 +275,28 @@ export default function AdminPage() {
       "Registered At",
     ];
 
+    const escapeCsvField = (value: string): string => {
+      if (value === undefined || value === null) return "";
+      let str = String(value);
+      if (str.startsWith("=") || str.startsWith("+") || str.startsWith("-") || str.startsWith("@")) {
+        str = "'" + str;
+      }
+      if (str.includes('"') || str.includes(",") || str.includes("\n") || str.includes("\r")) {
+        str = '"' + str.replace(/"/g, '""') + '"';
+      }
+      return str;
+    };
+
     const rows = members.map((m) => [
-      m.id,
-      `"${m.first_name || ""}"`,
-      `"${m.last_name || ""}"`,
-      `"${m.email}"`,
-      `"${m.country || ""}"`,
-      m.birth_year || "",
-      m.is_bartender ? "YES" : "NO",
-      `"${m.source}"`,
-      `"${new Date(m.created_at).toLocaleString()}"`,
+      escapeCsvField(m.id),
+      escapeCsvField(m.first_name || ""),
+      escapeCsvField(m.last_name || ""),
+      escapeCsvField(m.email),
+      escapeCsvField(m.country || ""),
+      escapeCsvField(m.birth_year ? String(m.birth_year) : ""),
+      escapeCsvField(m.is_bartender ? "YES" : "NO"),
+      escapeCsvField(m.source),
+      escapeCsvField(new Date(m.created_at).toLocaleString()),
     ]);
 
     const csvContent =
@@ -305,8 +350,9 @@ export default function AdminPage() {
 
             <form onSubmit={handleLogin} className="admin-gate-form">
               <div className="admin-gate-field">
-                <label className="admin-field-label">User Email</label>
+                <label htmlFor="admin-email" className="admin-field-label">User Email</label>
                 <input
+                  id="admin-email"
                   type="email"
                   placeholder="name@email.com"
                   value={email}
@@ -319,9 +365,10 @@ export default function AdminPage() {
               </div>
 
               <div className="admin-gate-field">
-                <label className="admin-field-label">Password</label>
+                <label htmlFor="admin-password" className="admin-field-label">Password</label>
                 <div className="admin-gate-input-wrap">
                   <input
+                    id="admin-password"
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter password"
                     value={password}

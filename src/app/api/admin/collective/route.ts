@@ -2,6 +2,21 @@ import { NextResponse } from "next/server";
 import { hasSupabaseServerEnv } from "@/lib/env";
 import { getSupabaseClient } from "@/lib/supabase/server";
 
+interface Member {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  email: string;
+  email_normalized: string;
+  birth_year: number | null;
+  country: string | null;
+  is_bartender: boolean;
+  consent: boolean;
+  source: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export const dynamic = "force-dynamic";
 
 async function verifyAdmin(
@@ -22,7 +37,13 @@ async function verifyAdmin(
       const { data, error } = await supabase.auth.getUser(bearerToken);
       if (!error && data?.user) {
         const allowedEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-        if (allowedEmail && data.user.email?.toLowerCase() !== allowedEmail) {
+        if (!allowedEmail) {
+          return {
+            authorized: false,
+            error: "Administrator access is not configured. Please set ADMIN_EMAIL.",
+          };
+        }
+        if (data.user.email?.toLowerCase() !== allowedEmail) {
           return {
             authorized: false,
             error: `Access denied. ${data.user.email} does not have administrator privileges.`,
@@ -63,20 +84,34 @@ export async function GET(request: Request) {
 
   try {
     const supabase = getSupabaseClient();
-    const { data: members, error } = await supabase
-      .from("sago_collective_members")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const PAGE_SIZE = 1000;
+    let allMembers: Member[] = [];
+    let from = 0;
 
-    if (error) {
-      console.error("[Admin API] Failed to fetch members:", error);
-      return NextResponse.json(
-        { error: "Unable to retrieve member records at this time." },
-        { status: 500 }
-      );
+    while (true) {
+      const { data: page, error } = await supabase
+        .from("sago_collective_members")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .range(from, from + PAGE_SIZE - 1);
+
+      if (error) {
+        console.error("[Admin API] Failed to fetch members:", error);
+        return NextResponse.json(
+          { error: "Unable to retrieve member records at this time." },
+          { status: 500 }
+        );
+      }
+
+      if (!page || page.length === 0) break;
+
+      allMembers = allMembers.concat(page);
+
+      if (page.length < PAGE_SIZE) break;
+      from += PAGE_SIZE;
     }
 
-    const memberList = members || [];
+    const memberList = allMembers;
     const total = memberList.length;
 
     // Calculate stats

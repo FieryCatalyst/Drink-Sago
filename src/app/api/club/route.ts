@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       const currentYear = new Date().getFullYear();
       const requiredAge = getLegalDrinkingAge(country);
 
-      if (isNaN(rawBirthYear) || rawBirthYear < 1900 || rawBirthYear > currentYear) {
+      if (!Number.isInteger(rawBirthYear) || rawBirthYear < 1900 || rawBirthYear > currentYear) {
         return NextResponse.json(
           { error: "Please provide a valid 4-digit birth year." },
           { status: 400 }
@@ -108,10 +108,16 @@ export async function POST(request: Request) {
 
       const { error: dbError } = await supabase
         .from("sago_collective_members")
-        .upsert(memberData, { onConflict: "email_normalized" });
+        .insert(memberData);
 
       if (dbError) {
         console.error("[SAGO Collective] Database insert error:", dbError.message, dbError.details);
+        if (dbError.code === "23505") {
+          return NextResponse.json(
+            { error: "This email is already registered." },
+            { status: 409 }
+          );
+        }
         return NextResponse.json(
           { error: "Unable to process registration at this time. Please try again later." },
           { status: 500 }
