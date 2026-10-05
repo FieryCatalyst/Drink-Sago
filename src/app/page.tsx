@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import { ArrowRight, ChevronDown, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import SiteFooter from "@/components/site-footer";
 import ClubModal from "@/components/club-modal";
@@ -55,9 +55,6 @@ export default function Home() {
       `${r.name} ${r.type} ${r.address}`.toLowerCase().includes(query.toLowerCase())
   );
 
-  const openClubModal = () => {
-    setClubModalOpen(true);
-  };
 
   return (
     <div className="sago-home">

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Check, Sparkles } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
+
 import SiteNav from "@/components/site-nav";
 import SiteFooter from "@/components/site-footer";
 

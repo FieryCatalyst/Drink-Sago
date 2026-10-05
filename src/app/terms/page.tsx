@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import LegalPage from "@/components/legal-page";
+
+export const metadata: Metadata = {
+  title: "Terms and Conditions",
+  description: "Terms governing use of the SAGO website and services.",
+  alternates: { canonical: "/terms" },
+};
+
 
 export default function TermsPage() {
   return <LegalPage title="Terms and Conditions" intro="These terms govern your use of the Sago website. They are a plain-language starting point and require review for the country where the responsible business operates." sections={[

@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import LegalPage from "@/components/legal-page";
+
+export const metadata: Metadata = {
+  title: "Cookie Policy",
+  description: "Information on browser storage and analytics controls on sago.world.",
+  alternates: { canonical: "/cookies" },
+};
+
 
 export default function CookiesPage() {
   return <LegalPage title="Cookie Policy" intro="This policy describes the small amount of browser storage used by sago.world and how optional analytics is controlled." sections={[

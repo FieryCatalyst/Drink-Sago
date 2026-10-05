@@ -52,11 +52,14 @@ export default function ClubModal({ isOpen, onClose, onSubmit }: ClubModalProps)
       }
       setStatus("success");
       setEmail("");
-    } catch {
+    } catch (err: unknown) {
       setStatus("error");
-      setErrorMessage("Something went wrong. Please try again.");
+      setErrorMessage(
+        err instanceof Error ? err.message : "Something went wrong. Please try again."
+      );
     }
   };
+
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") onClose();

@@ -44,12 +44,8 @@ const recipes: Cocktail[] = [
   { name: "Sago Blackout", category: "Mixed whisky", product: "Sago Original + Cinnamon Whisky", time: "7 min", difficulty: "★★★☆☆", glass: "Nick & Nora", ice: "No ice", image: "/assets/SAGO_BLACKOUT.png", ingredients: ["30 ml Sago Original Whisky", "20 ml Sago Cinnamon Whisky", "20 ml sweet vermouth", "10 ml coffee liqueur", "2 dashes chocolate bitters", "Orange peel", "Ice"], equipment: ["Mixing glass", "Bar spoon", "Nick & Nora"], method: ["Add both whiskies, vermouth, coffee liqueur and bitters to a mixing glass.", "Fill with ice.", "Stir for 20–25 seconds.", "Strain into a chilled coupe or Nick & Nora."], garnish: "Express an orange peel over the surface and discard it.", profile: "Coffee, vermouth, chocolate, vanilla, cinnamon, oak.", style: "Dark, rich & sophisticated", occasion: "The final chapter of the evening." },
 ];
 
-const cocktailGallery = recipes.map((recipe) => ({
-  image: recipe.image,
-  alt: recipe.name,
-}));
-
 const categories = ["All recipes", "Oak whisky", "Cinnamon whisky", "Hot & comforting", "Mixed whisky"];
+
 
 export default function CocktailsPage() {
   const [category, setCategory] = useState("All recipes");

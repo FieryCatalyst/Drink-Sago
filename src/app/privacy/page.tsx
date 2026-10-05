@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import LegalPage from "@/components/legal-page";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description: "Privacy policy explaining how SAGO collects and protects your information.",
+  alternates: { canonical: "/privacy" },
+};
+
 
 export default function PrivacyPage() {
   return <LegalPage title="Privacy Policy" intro="This policy explains what Sago collects through sago.world, why it is used and the choices available to you." sections={[

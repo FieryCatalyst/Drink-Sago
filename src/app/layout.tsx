@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Asul, Montserrat } from "next/font/google";
 import AgeGate from "@/components/age-gate";
 import AnalyticsConsent from "@/components/analytics-consent";
@@ -19,8 +19,17 @@ const displayFont = Montserrat({
   weight: ["400", "500", "600", "700"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export const metadata: Metadata = {
-  title: "SAGO | The House of Premium Spirits",
+  title: {
+    default: "SAGO | The House of Premium Spirits",
+    template: "%s | SAGO Whisky",
+  },
   description: "Celebrate every moment with SAGO | The House of Premium Spirits.",
   metadataBase: new URL("https://sago.world"),
   alternates: { canonical: "/" },
@@ -34,6 +43,12 @@ export const metadata: Metadata = {
     type: "website",
     images: ["/assets/Sago Logo.png"],
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "SAGO | The House of Premium Spirits",
+    description: "Celebrate every moment with SAGO | The House of Premium Spirits.",
+    images: ["/assets/Sago Logo.png"],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -42,9 +57,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${bodyFont.variable} ${displayFont.variable} h-full antialiased`}
     >
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-      </head>
       <body className="min-h-full flex flex-col">
         <AgeGate>
           <SmoothScroll>
@@ -56,3 +68,4 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     </html>
   );
 }
+

@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import LegalPage from "@/components/legal-page";
+
+export const metadata: Metadata = {
+  title: "Refund Policy",
+  description: "Information on retail purchases and returns for SAGO products.",
+  alternates: { canonical: "/refunds" },
+};
+
 
 export default function RefundsPage() {
   return <LegalPage title="Refund Policy" intro="Sago does not currently sell bottles, tickets or other goods through this website, so there is no online checkout or direct refund process here." sections={[

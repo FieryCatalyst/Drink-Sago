@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ArrowRight } from "lucide-react";
 import Image from "next/image";
 
@@ -13,11 +14,15 @@ function setAgeVerificationCookie() {
 }
 
 export default function AgeGate({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isAdminRoute = Boolean(pathname?.startsWith("/admin"));
+
   const [verified, setVerified] = useState<boolean | null>(null);
   const [isExiting, setIsExiting] = useState(false);
   const [birthYear, setBirthYear] = useState("");
   const [country, setCountry] = useState("Zambia");
   const [submitted, setSubmitted] = useState(false);
+
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -48,9 +53,14 @@ export default function AgeGate({ children }: { children: React.ReactNode }) {
     }, 650);
   };
 
+  if (isAdminRoute) {
+    return <>{children}</>;
+  }
+
   if (verified === null) {
     return <div className="age-gate-loading" aria-hidden="true" />;
   }
+
 
   return (
     <>
@@ -134,10 +144,11 @@ export default function AgeGate({ children }: { children: React.ReactNode }) {
           </button>
         </form>
         <p className="age-gate__fine-print">
-          By entering, you confirm that you meet the legal drinking age where you live and agree to our
-          <a href="/terms" className="age-gate__link">Terms & Conditions</a> and
-          <a href="/privacy" className="age-gate__link">Privacy Policy</a>.
+          By entering, you confirm that you meet the legal drinking age where you live and agree to our{" "}
+          <a href="/terms" target="_blank" rel="noopener noreferrer" className="age-gate__link">Terms & Conditions</a> and{" "}
+          <a href="/privacy" target="_blank" rel="noopener noreferrer" className="age-gate__link">Privacy Policy</a>.
         </p>
+
         <p className="age-gate__responsible">Please drink Sago responsibly.</p>
       </div>
     </div>

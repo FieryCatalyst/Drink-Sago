@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
+
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Mail } from "lucide-react";
+import { ArrowRight, Mail, Check } from "lucide-react";
 import { FaFacebookF, FaInstagram, FaTiktok } from "react-icons/fa6";
 import LogoLoop, { type LogoItem } from "@/components/ui/logo-loop";
 
@@ -22,6 +24,52 @@ function resetAgeGate() {
 }
 
 export default function SiteFooter() {
+  const [email, setEmail] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!trimmed || !emailRegex.test(trimmed)) {
+      setStatus("error");
+      setErrorMessage("Please enter a valid email address.");
+      return;
+    }
+
+    if (!consent) {
+      setStatus("error");
+      setErrorMessage("Please accept the terms to continue.");
+      return;
+    }
+
+    setStatus("submitting");
+    setErrorMessage("");
+
+    try {
+      const res = await fetch("/api/club", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: trimmed, consent: true }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Subscription failed. Please try again.");
+      }
+
+      setStatus("success");
+      setEmail("");
+    } catch (err: unknown) {
+      setStatus("error");
+      setErrorMessage(err instanceof Error ? err.message : "Something went wrong.");
+    }
+  };
+
   return (
     <footer className="footer">
       <div className="footer-top">
@@ -57,19 +105,59 @@ export default function SiteFooter() {
           </p>
           <LogoLoop logos={socialLinks} speed={28} gap={24} logoHeight={24} pauseOnHover ariaLabel="Sago social links" />
         </div>
-        <form className="newsletter" onSubmit={(event) => event.preventDefault()}>
-          <label htmlFor="email">Stay in the spirit</label>
-          <div>
-            <input id="email" name="email" type="email" placeholder="Your email address" autoComplete="email" required aria-describedby="newsletter-consent" />
-            <button type="submit" aria-label="Join the Sago newsletter"><span className="sr-only">Join the Sago newsletter</span><Mail size={17} /></button>
-          </div>
+        <form className="newsletter" onSubmit={handleNewsletterSubmit} noValidate>
+          <label htmlFor="footer-email">Stay in the spirit</label>
+          {status === "success" ? (
+            <div className="flex items-center gap-2 py-3 text-emerald-400 text-xs font-semibold tracking-wide">
+              <Check size={16} /> Welcome to the SAGO Collective!
+            </div>
+          ) : (
+            <div>
+              <input
+                id="footer-email"
+                name="email"
+                type="email"
+                placeholder="Your email address"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (status === "error") setStatus("idle");
+                }}
+                disabled={status === "submitting"}
+                required
+                aria-describedby="newsletter-consent"
+              />
+              <button
+                type="submit"
+                disabled={status === "submitting" || !email}
+                aria-label="Join the Sago newsletter"
+              >
+                <span className="sr-only">Join the Sago newsletter</span>
+                <Mail size={17} />
+              </button>
+            </div>
+          )}
           <label className="consent-check" htmlFor="newsletter-consent">
-            <input id="newsletter-consent" name="newsletter-consent" type="checkbox" required />
+            <input
+              id="newsletter-consent"
+              name="newsletter-consent"
+              type="checkbox"
+              checked={consent}
+              onChange={(e) => {
+                setConsent(e.target.checked);
+                if (status === "error") setStatus("idle");
+              }}
+              required
+            />
             <span>I agree to receive Sago emails and understand I can unsubscribe at any time. See the <Link href="/privacy">Privacy Policy</Link>.</span>
           </label>
-          <p className="form-note">Newsletter delivery is not currently active.</p>
+          {status === "error" && errorMessage && (
+            <p className="form-note text-red-400 font-medium">{errorMessage}</p>
+          )}
         </form>
       </div>
+
       <div className="footer-bottom">
         <span>© 2026 SAGO | The House of Premium Spirits</span>
         <span>Drink responsibly. Please enjoy Sago in moderation.</span>

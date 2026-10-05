@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import LegalPage from "@/components/legal-page";
+
+export const metadata: Metadata = {
+  title: "Accessibility Statement",
+  description: "Accessibility standards and commitments for the SAGO website.",
+  alternates: { canonical: "/accessibility" },
+};
+
 
 export default function AccessibilityPage() {
   return <LegalPage title="Accessibility" intro="We want sago.world to be usable by as many people as possible, including people who use keyboards, screen readers, magnification or reduced motion." sections={[

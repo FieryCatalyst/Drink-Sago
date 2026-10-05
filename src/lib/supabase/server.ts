@@ -7,3 +7,6 @@ export function getSupabaseAdmin() {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 }
+
+export const getSupabaseClient = getSupabaseAdmin;
+
