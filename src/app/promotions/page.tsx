@@ -23,7 +23,6 @@ export default function PromotionsPage() {
           <div className="promotions-hero__shade" />
           <div className="promotions-hero__container">
             <div className="promotions-hero__content">
-              <p className="eyebrow">The SAGO Wild Card</p>
               <h1 className="display">
                 Play bold.<br /><em>Live wilder.</em>
               </h1>
@@ -32,7 +31,6 @@ export default function PromotionsPage() {
               </p>
               <a className="button promotions-hero__cta" href="#wild-spirits">
                 <span>Enter the game</span>
-                <span aria-hidden="true">↓</span>
               </a>
             </div>
           </div>
@@ -41,9 +39,11 @@ export default function PromotionsPage() {
         <section className="promotions-slot-band" id="wild-spirits">
           <div className="promotions-slot-band__container">
             <div className="promotions-slot-band__intro">
-              <p className="eyebrow">A little luck · A lot of spirit</p>
               <h2 className="display">Find your<br /><em>wild side.</em></h2>
-              <p>Every animal carries its own kind of bold. Take a spin to meet yours and unlock your venue reward pass.</p>
+              <p>
+                TONIGHT HAS PLANS OF ITS OWN.<br />
+                DISCOVER YOUR SIDE QUEST. UNLOCK YOUR NIGHT
+              </p>
             </div>
             <div className="promotions-slot-band__game-wrap">
               <SagoSlotMachine />

@@ -95,8 +95,15 @@ export default function AgeGate({ children }: { children: React.ReactNode }) {
           className="age-gate__logo"
           priority
         />
-        <h1 id="age-gate-title" className="display">Are you of legal<br /><em>drinking age?</em></h1>
-        <p className="age-gate__copy">You must meet the legal drinking age where you live to enter this website. Please enjoy Sago responsibly.</p>
+        <h1 id="age-gate-title" className="display">
+          <span className="age-gate__title-line">Are you of legal</span>
+          <span className="age-gate__title-line"><em>drinking age?</em></span>
+        </h1>
+        <p className="age-gate__copy">
+          You must meet the legal drinking age where you live to enter this website.
+          <br />
+          Please enjoy Sago responsibly.
+        </p>
         <form onSubmit={handleSubmit} className="age-gate__form" noValidate>
           <div className="age-gate__fields">
             <div className="age-gate__field">
@@ -140,7 +147,6 @@ export default function AgeGate({ children }: { children: React.ReactNode }) {
           <p className="age-gate__hint">You must meet the legal drinking age for your selected location.</p>
           <button type="submit" className="age-gate__enter" disabled={!isLegalAge}>
             <span>Enter</span>
-            <ArrowRight size={16} />
           </button>
         </form>
         <p className="age-gate__fine-print">

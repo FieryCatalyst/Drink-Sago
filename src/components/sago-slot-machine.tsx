@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { FormEvent, useEffect, useState, useCallback, useRef } from "react";
+import { X } from "lucide-react";
 import {
   BIG_5_SYMBOLS,
   DEMO_VENUES,
@@ -156,8 +157,24 @@ export default function SagoSlotMachine() {
   const [isLeverPulled, setIsLeverPulled] = useState(false);
   const [message, setMessage] = useState("Pull the golden lever or press SPIN to reveal your spirit.");
   const [result, setResult] = useState<SpinResult | null>(null);
+  const [showResultModal, setShowResultModal] = useState(false);
   const [copied, setCopied] = useState(false);
   const spinTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Lock body scroll and listen for Escape key when popup is open
+  useEffect(() => {
+    if (showResultModal) {
+      document.body.style.overflow = "hidden";
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Escape") setShowResultModal(false);
+      };
+      window.addEventListener("keydown", handleKeyDown);
+      return () => {
+        document.body.style.overflow = "";
+        window.removeEventListener("keydown", handleKeyDown);
+      };
+    }
+  }, [showResultModal]);
 
   // Fetch real campaign venues if available; silently maintain fallback demo venues if database isn't ready
   useEffect(() => {
@@ -311,6 +328,7 @@ export default function SagoSlotMachine() {
         setIsSpinning(false);
         setDisplayedSymbols([s1, s2, s3]);
         setResult(serverResult);
+        setShowResultModal(true);
 
         const tier = serverResult.tier ?? serverResult.coupon?.tier;
         if (tier === "HIGH") {
@@ -335,6 +353,7 @@ export default function SagoSlotMachine() {
 
   const handleLeverPull = () => {
     if (isSpinning) return;
+    setShowResultModal(false);
     setIsLeverPulled(true);
     playSound("lever");
     setTimeout(() => {
@@ -538,7 +557,7 @@ export default function SagoSlotMachine() {
                           <div
                             className={`slot-reel__strip${spinAnimationActive ? " is-spinning" : ""}`}
                             style={{
-                              transform: `translateY(-${offsetPercent}%)`,
+                              transform: `translate3d(0, -${offsetPercent}%, 0)`,
                               transition: spinAnimationActive
                                 ? `transform ${transitionDuration} cubic-bezier(0.18, 0.85, 0.22, 1)`
                                 : "none",
@@ -548,24 +567,20 @@ export default function SagoSlotMachine() {
                               <div
                                 className="slot-cylinder-symbol"
                                 key={`${reelIndex}-${symbolIndex}`}
-                                title={symbol.name}
                               >
-                                {/* Classic Lucky 7 Watermark Accent */}
-                                <span className="slot-symbol__seven-watermark" aria-hidden="true">7</span>
-                                
                                 {/* Big 5 Animal Graphic */}
                                 <div className="slot-symbol__art-box">
                                   {/* eslint-disable-next-line @next/next/no-img-element */}
                                   <img
                                     src={symbol.image}
-                                    alt={symbol.name}
+                                    alt=""
                                     className="slot-reel__img"
                                     loading="eager"
                                     draggable={false}
                                   />
                                 </div>
                                 
-                                <span className="slot-symbol__name-tag">{symbol.name}</span>
+                                <span className="slot-symbol__name-tag" aria-hidden="true">{symbol.name}</span>
                               </div>
                             ))}
                           </div>
@@ -585,13 +600,9 @@ export default function SagoSlotMachine() {
                 </div>
               </div>
 
-              {/* Landed Spirit Animals Indicator Pills */}
-              <div className="slot-cabinet__spirits-shelf">
-                {displayedSymbols.map((sym, i) => (
-                  <span key={i} className="slot-cabinet__spirit-pill">
-                    <span className="slot-spirit-star">✦</span> {sym}
-                  </span>
-                ))}
+              {/* Machine Status & Win Message Shelf (Replaces animal pills) */}
+              <div className="slot-cabinet__spirits-shelf" aria-live="polite" aria-atomic="true">
+                <p className="slot-cabinet__message-text">{message}</p>
               </div>
 
               {/* Lower Golden Dashboard & Control Deck */}
@@ -625,25 +636,22 @@ export default function SagoSlotMachine() {
                     <span className="slot-win-lamp slot-win-lamp--right" aria-hidden="true">●</span>
                   </div>
 
-                  {/* Right: Round Bevel Accent / Payout status */}
-                  <div className="slot-dashboard__meter" title="Active SAGO Multiplier">
-                    <span className="slot-meter-label">{isSpinning ? "READY" : "PLAY"}</span>
+                  {/* Right: Round Bevel Accent / Status box (kept empty) */}
+                  <div className="slot-dashboard__meter" title="Active Status" aria-hidden="true">
+                    <span className="slot-meter-label">&nbsp;</span>
                   </div>
                 </div>
 
-                {/* 3 Golden Push Buttons Row */}
+                {/* 3 Golden Push Buttons Row (Center SPIN with decorative empty gold buttons on each side) */}
                 <div className="slot-dashboard__buttons-row">
+                  {/* Left Empty Gold Button */}
                   <button
                     type="button"
                     className="slot-gold-btn slot-gold-btn--sub"
-                    onClick={() => {
-                      playSound("button");
-                      setRegistered(false);
-                    }}
-                    title="Change Active Venue"
-                    disabled={isSpinning}
+                    aria-hidden="true"
+                    tabIndex={-1}
                   >
-                    <span className="slot-gold-btn__face">VENUE</span>
+                    <span className="slot-gold-btn__face" />
                   </button>
 
                   {/* Primary Center Golden SPIN Button */}
@@ -659,30 +667,22 @@ export default function SagoSlotMachine() {
                     </span>
                   </button>
 
+                  {/* Right Empty Gold Button */}
                   <button
                     type="button"
                     className="slot-gold-btn slot-gold-btn--sub"
-                    onClick={() => {
-                      setMessage("Big 5 Spirit Tiers: Lions & Leopards unlock up to 50% discount!");
-                      playSound("button");
-                    }}
-                    title="Big 5 Paytable & Tiers"
-                    disabled={isSpinning}
+                    aria-hidden="true"
+                    tabIndex={-1}
                   >
-                    <span className="slot-gold-btn__face">TIERS</span>
+                    <span className="slot-gold-btn__face" />
                   </button>
                 </div>
-
-                {/* Message ticker */}
-                <p className="slot-dashboard__ticker">{message}</p>
               </div>
 
               {/* Bottom Coin Return & Payout Tray */}
               <div className="slot-cabinet__tray">
                 <div className="slot-tray__bezel">
-                  <div className="slot-tray__chute">
-                    <span className="slot-tray__crest">✦ SAGO SPIRIT RESERVE ✦</span>
-                  </div>
+                  <div className="slot-tray__chute" />
                 </div>
               </div>
 
@@ -720,33 +720,35 @@ export default function SagoSlotMachine() {
                   </div>
                 </div>
               </div>
-              <span className="slot-lever__tooltip" aria-hidden="true">PULL</span>
             </div>
           </div>
+        </div>
+      )}
 
-          <p className="slot-machine__note">
-            Every spin resolves through the SAGO Big 5 Reward Hierarchy to create a unique venue-bound reward
-          </p>
+      {/* Pop-up Modal for Winning Pass & Coupon Result */}
+      {result?.coupon && showResultModal && (
+        <div
+          className="slot-modal-overlay"
+          onClick={() => setShowResultModal(false)}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="slot-result-title"
+        >
+          <div
+            className="slot-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="slot-modal__close"
+              onClick={() => setShowResultModal(false)}
+              aria-label="Close pass popup"
+            >
+              <X size={20} />
+            </button>
 
-          {/* Winning Digital Pass & Coupon Result */}
-          {result?.coupon && (
             <div className="slot-result" aria-live="polite">
-              <div className="slot-result__ornament-top">✦ ✦ ✦</div>
-              
-              {/* Hierarchy Tier Badge */}
-              <div className="slot-result__tier-badge">
-                {result.is_demo && <span className="slot-result__tier-demo">DEMO</span>}
-                <span className="slot-result__tier-name">TIER {result.coupon.tier ?? result.tier ?? "LOW"}</span>
-                <span className="slot-result__tier-dot">·</span>
-                <span className="slot-result__tier-notes">
-                  {result.is_demo ? "Demo Mode" : (result.coupon.notes ?? "SAGO Reward Hierarchy")}
-                </span>
-              </div>
-
-              <p className="eyebrow">
-                {result.is_demo ? "Demo Invitation Pass · Offline Preview" : "Your SAGO Invitation Pass"}
-              </p>
-              <h3>Your night<br /><em>has spoken.</em></h3>
+              <h3 id="slot-result-title">Your night<br /><em>has spoken.</em></h3>
 
               {/* Dual Discounts according to SAGO Reward Hierarchy */}
               <div className="slot-result__discount-grid">
@@ -817,13 +819,16 @@ export default function SagoSlotMachine() {
               <button
                 type="button"
                 className="slot-result__play-again"
-                onClick={handleLeverPull}
+                onClick={() => {
+                  setShowResultModal(false);
+                  handleLeverPull();
+                }}
                 disabled={isSpinning}
               >
                 Spin for another spirit ↻
               </button>
             </div>
-          )}
+          </div>
         </div>
       )}
 
