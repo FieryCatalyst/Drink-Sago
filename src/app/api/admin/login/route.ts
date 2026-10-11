@@ -18,51 +18,59 @@ export async function POST(request: Request) {
     }
 
     const cleanEmail = rawEmail.toLowerCase();
-    const configAdminEmail = (process.env.ADMIN_EMAIL || "itusharpandey.12@gmail.com").toLowerCase().trim();
-    const configAdminPassword = (process.env.ADMIN_PASSWORD || "sago2026").trim();
+    const configAdminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase().trim();
 
-    // Check direct admin credentials from environment (support both sago2026 and sago26)
-    const isEmailValid = cleanEmail === configAdminEmail || cleanEmail === "itusharpandey.12@gmail.com";
-    const isPasswordValid =
-      rawPassword === configAdminPassword ||
-      rawPassword === "sago2026" ||
-      rawPassword === "sago26";
+    if (!configAdminEmail) {
+      return NextResponse.json(
+        { error: "Administrator email is not configured." },
+        { status: 500 }
+      );
+    }
 
-    if (isEmailValid && isPasswordValid) {
+    // Only support Supabase Auth login - no hardcoded fallbacks
+    if (!hasSupabaseServerEnv()) {
+      return NextResponse.json(
+        { error: "Authentication service unavailable." },
+        { status: 503 }
+      );
+    }
+
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: rawEmail,
+        password: rawPassword,
+      });
+
+      if (error || !data?.session) {
+        return NextResponse.json(
+          { error: "Invalid administrator credentials. Please check your email and password." },
+          { status: 401 }
+        );
+      }
+
+      if (data.user.email?.toLowerCase() !== configAdminEmail) {
+        await supabase.auth.signOut();
+        return NextResponse.json(
+          { error: "Access denied: insufficient administrator privileges." },
+          { status: 403 }
+        );
+      }
+
+      // Return both access token and refresh token so browser Supabase client can establish and refresh session
       return NextResponse.json({
         success: true,
-        token: `admin-token-sago2026`,
-        email: cleanEmail,
+        token: data.session.access_token,
+        refreshToken: data.session.refresh_token,
+        email: data.user.email,
       });
+    } catch (sbErr) {
+      console.error("[Admin Login] Supabase auth error:", sbErr);
+      return NextResponse.json(
+        { error: "Authentication service error. Please try again." },
+        { status: 500 }
+      );
     }
-
-    // Attempt Supabase Auth login if configured
-    if (hasSupabaseServerEnv()) {
-      try {
-        const supabase = getSupabaseClient();
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: rawEmail,
-          password: rawPassword,
-        });
-
-        if (!error && data?.session) {
-          if (data.user.email?.toLowerCase() === configAdminEmail) {
-            return NextResponse.json({
-              success: true,
-              token: data.session.access_token,
-              email: data.user.email,
-            });
-          }
-        }
-      } catch (sbErr) {
-        console.warn("[Admin Login] Supabase auth attempt notice:", sbErr);
-      }
-    }
-
-    return NextResponse.json(
-      { error: "Invalid administrator credentials. Please check your email and password." },
-      { status: 401 }
-    );
   } catch (error) {
     console.error("[Admin Login] Error:", error);
     return NextResponse.json(

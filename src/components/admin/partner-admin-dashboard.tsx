@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Building2,
   Search,
@@ -64,12 +64,16 @@ export default function PartnerAdminDashboard({
   const [loadError, setLoadError] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 
   // Inspect Modal
   const [selectedApp, setSelectedApp] = useState<PartnerApplicationRecord | null>(null);
   const [activeTab, setActiveTab] = useState<"details" | "checklist" | "decision" | "audit">("checklist");
   const [isUpdating, setIsUpdating] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // AbortController for cancelling in-flight requests
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Editable decision state
   const [editDecision, setEditDecision] = useState<{
@@ -110,20 +114,38 @@ export default function PartnerAdminDashboard({
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const fetchApplications = useCallback(async () => {
+    // Cancel any in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
     setLoadError("");
 
     try {
       const url = new URL("/api/admin/partners", window.location.origin);
       if (statusFilter !== "all") url.searchParams.set("status", statusFilter);
-      if (searchQuery.trim()) url.searchParams.set("q", searchQuery.trim());
+      if (debouncedSearchQuery.trim()) url.searchParams.set("q", debouncedSearchQuery.trim());
 
       const res = await fetch(url.toString(), {
         headers: {
           Authorization: `Bearer ${authToken}`,
         },
+        signal: controller.signal,
       });
+
+      if (controller.signal.aborted) return;
 
       const data = await res.json();
 
@@ -134,17 +156,25 @@ export default function PartnerAdminDashboard({
       setApplications(data.applications || []);
       setStats(data.stats || null);
     } catch (err: unknown) {
+      if (controller.signal.aborted) return;
       const msg = err instanceof Error ? err.message : "Load failed";
       setLoadError(msg);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
-  }, [authToken, statusFilter, searchQuery]);
+  }, [authToken, statusFilter, debouncedSearchQuery]);
 
   useEffect(() => {
     if (authToken) {
       fetchApplications();
     }
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [authToken, fetchApplications]);
 
   const handleOpenApp = (app: PartnerApplicationRecord) => {

@@ -54,12 +54,26 @@ export function generatePartnerId(seq: number): string {
   return `SAGO-PRT-${pad}`;
 }
 
+function getNextPartnerSequence(apps: PartnerApplicationRecord[]): number {
+  let maxSeq = 0;
+  for (const app of apps) {
+    if (app.partnerIdAssigned) {
+      const match = app.partnerIdAssigned.match(/SAGO-PRT-(\d+)/);
+      if (match) {
+        const seq = parseInt(match[1], 10);
+        if (seq > maxSeq) maxSeq = seq;
+      }
+    }
+  }
+  return maxSeq + 1;
+}
+
 export function generateOutletId(partnerId: string, outletIndex: number): string {
   const pad = String(outletIndex + 1).padStart(2, "0");
   return `${partnerId}-OUT-${pad}`;
 }
 
-const DEFAULT_CHECKLIST: VerificationChecklist = {
+export const DEFAULT_CHECKLIST: VerificationChecklist = {
   business_registration_verified: false,
   business_address_verified: false,
   owner_rep_verified: false,
@@ -77,7 +91,8 @@ const DEFAULT_CHECKLIST: VerificationChecklist = {
 export async function saveApplication(
   formData: PartnerFormData,
   isDraft: boolean = false,
-  existingReference?: string
+  existingReference?: string,
+  ownershipToken?: string
 ): Promise<{ record: PartnerApplicationRecord; reference: string }> {
   const now = new Date().toISOString();
   const apps = readLocalApplications();
@@ -85,6 +100,29 @@ export async function saveApplication(
   let existingIndex = -1;
   if (existingReference) {
     existingIndex = apps.findIndex((a) => a.applicationReference === existingReference);
+  }
+
+  // If updating an existing record, validate ownership and status
+  if (existingIndex >= 0) {
+    const existing = apps[existingIndex];
+    
+    // Require ownership token for updates
+    if (!ownershipToken) {
+      throw new Error("Ownership token required to update existing application.");
+    }
+    
+    // Verify ownership token matches the record (simple check - in production use proper token validation)
+    if (existing.id !== ownershipToken) {
+      throw new Error("Invalid ownership token for this application.");
+    }
+    
+    // Reject updates to records under review or approved
+    if (existing.status !== "draft") {
+      throw new Error(`Cannot update application with status: ${existing.status}. Only drafts can be modified.`);
+    }
+    
+    // Do not retain an approved record's partner ID through this path
+    // (but drafts shouldn't have partnerIdAssigned anyway)
   }
 
   const reference =
@@ -123,8 +161,9 @@ export async function saveApplication(
         : [initialAuditLog],
     assignedOfficerId: existingIndex >= 0 ? apps[existingIndex].assignedOfficerId : undefined,
     assignedOfficerName: existingIndex >= 0 ? apps[existingIndex].assignedOfficerName : undefined,
-    partnerIdAssigned: existingIndex >= 0 ? apps[existingIndex].partnerIdAssigned : undefined,
-    outletIdsAssigned: existingIndex >= 0 ? apps[existingIndex].outletIdsAssigned : undefined,
+    // Do not retain partnerIdAssigned when updating a draft
+    partnerIdAssigned: undefined,
+    outletIdsAssigned: undefined,
     agreementReference: existingIndex >= 0 ? apps[existingIndex].agreementReference : undefined,
     activationDate: existingIndex >= 0 ? apps[existingIndex].activationDate : undefined,
     renewalDate: existingIndex >= 0 ? apps[existingIndex].renewalDate : undefined,
@@ -136,7 +175,7 @@ export async function saveApplication(
   if (hasSupabaseServerEnv()) {
     try {
       const supabase = getSupabaseClient();
-      await supabase.from("partner_applications").upsert({
+      const { error: sbError } = await supabase.from("partner_applications").upsert({
         id: newRecord.id,
         application_reference: newRecord.applicationReference,
         registered_business_name: formData.registeredBusinessName,
@@ -238,8 +277,13 @@ export async function saveApplication(
         status,
         updated_at: now,
       });
+      if (sbError) {
+        console.error("[Storage] Supabase upsert error:", sbError);
+        throw new Error(`Database write failed: ${sbError.message}`);
+      }
     } catch (sbErr) {
-      console.warn("[Storage] Supabase insert warning, persisting to local storage:", sbErr);
+      console.error("[Storage] Supabase upsert failed:", sbErr);
+      throw sbErr;
     }
   }
 
@@ -257,6 +301,25 @@ export async function saveApplication(
 export async function getApplicationByReference(
   reference: string
 ): Promise<PartnerApplicationRecord | null> {
+  // Use Supabase as authoritative source when available
+  if (hasSupabaseServerEnv()) {
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from("partner_applications")
+        .select("*")
+        .eq("application_reference", reference.toUpperCase())
+        .single();
+      
+      if (!error && data) {
+        return mapSupabaseRecordToApplication(data);
+      }
+    } catch (sbErr) {
+      console.warn("[Storage] Supabase read failed, falling back to local:", sbErr);
+    }
+  }
+  
+  // Fallback to local storage
   const apps = readLocalApplications();
   const found = apps.find(
     (a) => a.applicationReference.toUpperCase() === reference.trim().toUpperCase()
@@ -267,15 +330,201 @@ export async function getApplicationByReference(
 export async function getApplicationById(
   id: string
 ): Promise<PartnerApplicationRecord | null> {
+  // Use Supabase as authoritative source when available
+  if (hasSupabaseServerEnv()) {
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase
+        .from("partner_applications")
+        .select("*")
+        .eq("id", id)
+        .single();
+      
+      if (!error && data) {
+        return mapSupabaseRecordToApplication(data);
+      }
+    } catch (sbErr) {
+      console.warn("[Storage] Supabase read failed, falling back to local:", sbErr);
+    }
+  }
+  
+  // Fallback to local storage
   const apps = readLocalApplications();
   const found = apps.find((a) => a.id === id);
   return found || null;
+}
+
+function mapSupabaseRecordToApplication(data: Record<string, unknown>): PartnerApplicationRecord {
+  // Helper to normalize nullable strings to empty strings
+  const ns = (value: unknown): string => (value ?? "").toString();
+
+  return {
+    id: ns(data.id),
+    applicationReference: ns(data.application_reference),
+    status: data.status as PartnerApplicationStatus,
+    submittedAt: ns(data.submitted_at),
+    createdAt: ns(data.created_at),
+    updatedAt: ns(data.updated_at),
+    data: {
+      registeredBusinessName: ns(data.registered_business_name),
+      tradingName: ns(data.trading_name),
+      businessType: ns(data.business_type),
+      businessTypeOther: ns(data.business_type_other),
+      businessRegistrationNumber: ns(data.business_registration_number),
+      dateOfEstablishment: ns(data.date_of_establishment),
+      businessWebsite: ns(data.business_website),
+      businessEmail: ns(data.business_email),
+      businessPhone: ns(data.business_phone),
+      country: ns(data.country),
+      county: ns(data.county),
+      townCity: ns(data.town_city),
+      estateArea: ns(data.estate_area),
+      streetBuilding: ns(data.street_building),
+      postalAddress: ns(data.postal_address),
+      gpsCoordinates: ns(data.gps_coordinates),
+      googleMapsLink: ns(data.google_maps_link),
+      numberOfOutlets: (data.number_of_outlets as number) ?? 1,
+      dailyCustomerFootfall: ns(data.daily_customer_footfall),
+      operatingDays: (data.operating_days as string[]) ?? [],
+      openingHours: ns(data.opening_hours),
+      monthlySalesVolume: ns(data.monthly_sales_volume),
+      sellsAlcohol: (data.sells_alcohol as boolean) ?? true,
+      hasBarManager: (data.has_bar_manager as boolean) ?? true,
+      additionalOutlets: (data.additional_outlets as any[]) ?? [],
+      documents: (data.documents as any[]) ?? [],
+      ownerFullName: ns(data.owner_full_name),
+      ownerPosition: ns(data.owner_position),
+      ownerNationality: ns(data.owner_nationality),
+      ownerEmail: ns(data.owner_email),
+      ownerPhone: ns(data.owner_phone),
+      ownerAltPhone: ns(data.owner_alt_phone),
+      authContactName: ns(data.auth_contact_name),
+      authContactTitle: ns(data.auth_contact_title),
+      authContactEmail: ns(data.auth_contact_email),
+      authContactPhone: ns(data.auth_contact_phone),
+      authContactCanSign: (data.auth_contact_can_sign as boolean) ?? true,
+      ownershipStructure: ns(data.ownership_structure),
+      directors: (data.directors_partners as any[]) ?? [],
+      authAgreementPerson: ns(data.auth_agreement_person),
+      partnershipType: ns(data.partnership_type),
+      partnershipTypeOther: ns(data.partnership_type_other),
+      preferredStartDate: ns(data.preferred_start_date),
+      agreementDuration: ns(data.agreement_duration),
+      outletsJoiningCount: (data.outlets_joining_count as number) ?? 1,
+      products: (data.products as any[]) ?? [],
+      campaignDiscountType: data.campaign_discount_type as "Percentage" | "Fixed Amount" | "Other",
+      proposedDiscountRates: ns(data.proposed_discount_rates),
+      minimumPurchaseReq: ns(data.minimum_purchase_req),
+      maxDiscountPerTx: ns(data.max_discount_per_tx),
+      eligibleProductsTerms: ns(data.eligible_products_terms),
+      discountDaysHours: ns(data.discount_days_hours),
+      campaignStartDate: ns(data.campaign_start_date),
+      campaignEndDate: ns(data.campaign_end_date),
+      redemptionLimit: (data.redemption_limit as number) ?? 0,
+      combinableWithOffers: (data.combinable_with_offers as boolean) ?? false,
+      campaignExclusions: ns(data.campaign_exclusions),
+      outletDisplayName: ns(data.outlet_display_name),
+      redemptionMethod: ns(data.redemption_method),
+      staffAccessCount: (data.staff_access_count as number) ?? 0,
+      designatedOutletManager: ns(data.designated_outlet_manager),
+      staffTrainingStatus: ns(data.staff_training_status),
+      hasSmartphoneTablet: (data.has_smartphone_tablet as boolean) ?? true,
+      hasReliableInternet: (data.has_reliable_internet as boolean) ?? true,
+      hasComputerDevice: (data.has_computer_device as boolean) ?? true,
+      preferredRedemptionDevice: ns(data.preferred_redemption_device),
+      requiresOnboardingAssistance: (data.requires_onboarding_assistance as boolean) ?? true,
+      acknowledgedRedemptionRules: (data.redemption_rules_acknowledged as boolean[]) ?? [],
+      requiresSettlement: (data.requires_settlement as boolean) ?? false,
+      settlementArrangement: ns(data.settlement_arrangement),
+      settlementBankName: ns(data.settlement_bank_name),
+      settlementAccountName: ns(data.settlement_account_name),
+      settlementAccountNumber: ns(data.settlement_account_number),
+      settlementBranch: ns(data.settlement_branch),
+      settlementCurrency: ns(data.settlement_currency),
+      settlementAltMethod: ns(data.settlement_alt_method),
+      settlementContactName: ns(data.settlement_contact_name),
+      settlementContactEmail: ns(data.settlement_contact_email),
+      settlementContactPhone: ns(data.settlement_contact_phone),
+      settlementAgreedTerms: ns(data.settlement_agreed_terms),
+      settlementFrequency: ns(data.settlement_frequency),
+      settlementInvoiceReq: ns(data.settlement_invoice_req),
+      permListPartner: (data.perm_list_partner as boolean) ?? true,
+      permDisplayNameAddress: (data.perm_display_name_address as boolean) ?? true,
+      permUsePhotos: (data.perm_use_photos as boolean) ?? true,
+      permDisplayPromoMaterials: (data.perm_display_promo_materials as boolean) ?? true,
+      permSocialChannels: (data.perm_social_channels as boolean) ?? true,
+      marketingSocialHandles: ns(data.marketing_social_handles),
+      marketingContactPerson: ns(data.marketing_contact_person),
+      marketingContactEmail: ns(data.marketing_contact_email),
+      marketingContactPhone: ns(data.marketing_contact_phone),
+      declarations: (data.declarations_acknowledged as boolean[]) ?? [],
+      privacyNoticeAcknowledged: (data.privacy_notice_acknowledged as boolean) ?? false,
+      marketingCommsConsent: (data.marketing_comms_consent as boolean) ?? false,
+      signatoryFullName: ns(data.signatory_full_name),
+      signatoryDesignation: ns(data.signatory_designation),
+      signatoryBusinessName: ns(data.signatory_business_name),
+      signatureData: ns(data.signature_data),
+      signatureDate: ns(data.signature_date),
+    },
+    assignedOfficerId: ns(data.assigned_officer_id),
+    assignedOfficerName: ns(data.assigned_officer_name),
+    partnerIdAssigned: ns(data.partner_id_assigned),
+    outletIdsAssigned: (data.outlet_ids_assigned as Record<string, string>) ?? {},
+    agreementReference: ns(data.agreement_reference),
+    activationDate: ns(data.activation_date),
+    renewalDate: ns(data.renewal_date),
+    internalNotes: ns(data.internal_notes),
+    decisionReason: ns(data.decision_reason),
+    checklist: data.checklist as VerificationChecklist,
+    auditLogs: [],
+  };
 }
 
 export async function getAllApplications(
   statusFilter?: string,
   searchQuery?: string
 ): Promise<PartnerApplicationRecord[]> {
+  // Use Supabase as authoritative source when available
+  if (hasSupabaseServerEnv()) {
+    try {
+      const supabase = getSupabaseClient();
+      let query = supabase.from("partner_applications").select("*");
+      
+      if (statusFilter && statusFilter !== "all") {
+        query = query.eq("status", statusFilter);
+      }
+      
+      const { data, error } = await query.order("submitted_at", { ascending: false });
+      
+      if (!error && data) {
+        let results = data.map(mapSupabaseRecordToApplication);
+        
+        if (searchQuery && searchQuery.trim()) {
+          const q = searchQuery.toLowerCase().trim();
+          results = results.filter((app) => {
+            const ref = app.applicationReference.toLowerCase();
+            const name = app.data.registeredBusinessName.toLowerCase();
+            const trading = app.data.tradingName.toLowerCase();
+            const email = app.data.businessEmail.toLowerCase();
+            const county = app.data.county.toLowerCase();
+            return (
+              ref.includes(q) ||
+              name.includes(q) ||
+              trading.includes(q) ||
+              email.includes(q) ||
+              county.includes(q)
+            );
+          });
+        }
+        
+        return results;
+      }
+    } catch (sbErr) {
+      console.warn("[Storage] Supabase read failed, falling back to local:", sbErr);
+    }
+  }
+  
+  // Fallback to local storage
   const apps = readLocalApplications();
 
   return apps.filter((app) => {
@@ -392,12 +641,37 @@ export async function updateApplicationVerification(
   };
 
   // If status is being set to approved and no partnerId has been assigned, auto-generate one!
+  // Use Supabase as source of truth for partner ID sequencing
   if (
     updates.status === "approved" &&
     !updatedRecord.partnerIdAssigned
   ) {
-    const totalApproved = apps.filter((a) => a.partnerIdAssigned).length + 1;
-    const pId = generatePartnerId(totalApproved);
+    let nextSeq: number;
+    if (hasSupabaseServerEnv()) {
+      const supabase = getSupabaseClient();
+      
+      // Use Postgres sequence via RPC for atomic allocation
+      const { data: rpcData, error: rpcError } = await supabase.rpc("get_next_partner_sequence");
+      
+      if (rpcError) {
+        throw new Error(`Partner ID sequence allocation failed: ${rpcError.message}`);
+      }
+      
+      if (rpcData === null || rpcData === undefined) {
+        throw new Error("Partner ID sequence allocation failed: RPC returned no value");
+      }
+      
+      const parsed = Number(rpcData);
+      if (!Number.isInteger(parsed) || parsed < 1) {
+        throw new Error(`Partner ID sequence allocation failed: invalid sequence value ${rpcData}`);
+      }
+      
+      nextSeq = parsed;
+    } else {
+      nextSeq = getNextPartnerSequence(apps);
+    }
+    
+    const pId = generatePartnerId(nextSeq);
     updatedRecord.partnerIdAssigned = pId;
 
     // Also auto-generate outlet IDs for primary and additional outlets
@@ -410,6 +684,49 @@ export async function updateApplicationVerification(
     updatedRecord.outletIdsAssigned = outletMap;
   }
 
+  // Persist to Supabase if configured
+  if (hasSupabaseServerEnv()) {
+    try {
+      const supabase = getSupabaseClient();
+      const updatePayload: Record<string, unknown> = {
+        updated_at: now,
+      };
+      
+      if (updates.status) updatePayload.status = updates.status;
+      if (updates.assignedOfficerId !== undefined) updatePayload.assigned_officer_id = updates.assignedOfficerId;
+      if (updates.assignedOfficerName !== undefined) updatePayload.assigned_officer_name = updates.assignedOfficerName;
+      
+      // Persist generated partnerIdAssigned and outletIdsAssigned from updatedRecord when they differ from existing
+      if (updatedRecord.partnerIdAssigned !== existing.partnerIdAssigned) {
+        updatePayload.partner_id_assigned = updatedRecord.partnerIdAssigned;
+      }
+      if (updatedRecord.outletIdsAssigned !== existing.outletIdsAssigned) {
+        updatePayload.outlet_ids_assigned = updatedRecord.outletIdsAssigned;
+      }
+      
+      if (updates.agreementReference !== undefined) updatePayload.agreement_reference = updates.agreementReference;
+      if (updates.activationDate !== undefined) updatePayload.activation_date = updates.activationDate;
+      if (updates.renewalDate !== undefined) updatePayload.renewal_date = updates.renewalDate;
+      if (updates.internalNotes !== undefined) updatePayload.internal_notes = updates.internalNotes;
+      if (updates.decisionReason !== undefined) updatePayload.decision_reason = updates.decisionReason;
+      if (updates.checklist) updatePayload.checklist = updatedRecord.checklist;
+
+      const { error: sbError } = await supabase
+        .from("partner_applications")
+        .update(updatePayload)
+        .eq("id", id);
+      
+      if (sbError) {
+        console.error("[Storage] Supabase update error:", sbError);
+        throw new Error(`Database update failed: ${sbError.message}`);
+      }
+    } catch (sbErr) {
+      console.error("[Storage] Supabase update failed:", sbErr);
+      throw sbErr;
+    }
+  }
+
+  // 2. Persist to local JSON file store
   apps[index] = updatedRecord;
   writeLocalApplications(apps);
 

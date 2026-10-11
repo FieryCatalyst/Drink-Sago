@@ -158,7 +158,7 @@ create table if not exists public.partner_applications (
   status public.partner_app_status not null default 'pending_review',
   assigned_officer_id text,
   assigned_officer_name text,
-  partner_id_assigned text,
+  partner_id_assigned text unique,
   agreement_reference text,
   activation_date date,
   renewal_date date,
@@ -305,17 +305,8 @@ alter table public.partner_verification enable row level security;
 alter table public.partner_audit_logs enable row level security;
 
 -- Policies
-create policy "Allow anon insert partner_applications" on public.partner_applications for insert to anon with check (true);
-create policy "Allow anon select own partner_applications" on public.partner_applications for select to anon using (true);
-
-create policy "Allow anon insert partner_outlets" on public.partner_outlets for insert to anon with check (true);
-create policy "Allow anon select partner_outlets" on public.partner_outlets for select to anon using (true);
-
-create policy "Allow anon insert partner_documents" on public.partner_documents for insert to anon with check (true);
-create policy "Allow anon select partner_documents" on public.partner_documents for select to anon using (true);
-
-create policy "Allow anon insert partner_products_and_offers" on public.partner_products_and_offers for insert to anon with check (true);
-create policy "Allow anon select partner_products_and_offers" on public.partner_products_and_offers for select to anon using (true);
+-- Allow server-side (service_role) writes only; anon users cannot insert directly
+-- Client-side inserts go through API routes that use service_role
 
 -- Service role full access
 create policy "Allow service_role all on partner_applications" on public.partner_applications for all to service_role using (true) with check (true);

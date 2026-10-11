@@ -254,6 +254,24 @@ export default function Step7PaymentSettlement({ data, errors, onChange }: Step7
                 <span className="field-error-msg">{errors.settlementContactEmail}</span>
               )}
             </div>
+
+            {/* Settlement Contact Phone */}
+            <div className="col-4 form-field">
+              <label className="field-label" htmlFor="settlementContactPhone">
+                <span>Finance Phone <span className="required-star">*</span></span>
+              </label>
+              <input
+                id="settlementContactPhone"
+                type="tel"
+                className={`form-input ${errors.settlementContactPhone ? "has-error" : ""}`}
+                placeholder="+254 712 345 678"
+                value={data.settlementContactPhone}
+                onChange={(e) => onChange("settlementContactPhone", e.target.value)}
+              />
+              {errors.settlementContactPhone && (
+                <span className="field-error-msg">{errors.settlementContactPhone}</span>
+              )}
+            </div>
           </div>
         </div>
       ) : (

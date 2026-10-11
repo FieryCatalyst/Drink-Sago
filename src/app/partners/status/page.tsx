@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import SiteNav from "@/components/site-nav";
@@ -26,8 +26,12 @@ function StatusContent() {
   const [error, setError] = useState<string | null>(null);
   const [application, setApplication] = useState<any | null>(null);
 
+  // Track the latest request to avoid race conditions
+  const requestIdRef = useRef(0);
+
   const fetchStatus = async (ref: string) => {
     if (!ref.trim()) return;
+    const currentRequestId = ++requestIdRef.current;
     setLoading(true);
     setError(null);
     setApplication(null);
@@ -36,16 +40,26 @@ function StatusContent() {
       const res = await fetch(`/api/partners/status/${encodeURIComponent(ref.trim())}`);
       const data = await res.json();
 
+      // Only update state if this is still the latest request
+      if (currentRequestId !== requestIdRef.current) {
+        return;
+      }
+
       if (!res.ok) {
         throw new Error(data.error || "Application not found for that reference.");
       }
 
       setApplication(data.application);
     } catch (err: unknown) {
+      if (currentRequestId !== requestIdRef.current) {
+        return;
+      }
       const msg = err instanceof Error ? err.message : "Lookup failed.";
       setError(msg);
     } finally {
-      setLoading(false);
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 

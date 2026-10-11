@@ -85,7 +85,7 @@ export default function AdminPage() {
     setTimeout(() => setToastMessage(null), 2500);
   }, []);
 
-  const loadData = useCallback(async (token: string, generation: number) => {
+  const loadData = useCallback(async (token: string, generation: number): Promise<boolean> => {
     setIsLoading(true);
     setLoadError("");
 
@@ -99,6 +99,13 @@ export default function AdminPage() {
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 401 && generation === authGenerationRef.current) {
+          // Clear stored token on 401 only if this request matches current auth state
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("sago_admin_token");
+            localStorage.removeItem("sago_admin_email");
+          }
+        }
         throw new Error(data.error || "Failed to load collective data.");
       }
 
@@ -107,13 +114,16 @@ export default function AdminPage() {
         setIsAuthenticated(true);
         setMembers(data.members || []);
         setStats(data.stats || null);
+        return true;
       }
+      return false;
     } catch (err: unknown) {
       if (generation === authGenerationRef.current) {
         const msg = err instanceof Error ? err.message : "Authentication failed";
         setAuthError(msg);
         setIsAuthenticated(false);
       }
+      return false;
     } finally {
       if (generation === authGenerationRef.current) {
         setIsLoading(false);
@@ -127,16 +137,18 @@ export default function AdminPage() {
     let isMounted = true;
 
     async function checkExistingSession() {
-      // Check stored token first
+      // Check stored token first - validate with server before setting authenticated
       const storedToken = typeof window !== "undefined" ? localStorage.getItem("sago_admin_token") : null;
       const storedEmail = typeof window !== "undefined" ? localStorage.getItem("sago_admin_email") : null;
       if (storedToken && isMounted) {
         setAuthToken(storedToken);
         setUserEmail(storedEmail || "Admin");
         const gen = ++authGenerationRef.current;
-        loadData(storedToken, gen);
-        setIsAuthenticated(true);
-        return;
+        const loadSuccess = await loadData(storedToken, gen);
+        // If loading succeeds or component unmounted, return
+        if (loadSuccess || !isMounted) return;
+        // If loading fails, clear auth error and continue to Supabase session/refresh-token paths
+        setAuthError("");
       }
 
       try {
@@ -146,8 +158,29 @@ export default function AdminPage() {
           setAuthToken(data.session.access_token);
           setUserEmail(data.session.user.email || "Admin");
           const gen = ++authGenerationRef.current;
-          loadData(data.session.access_token, gen);
-          setIsAuthenticated(true);
+          await loadData(data.session.access_token, gen);
+        } else {
+          // Try to restore session from stored refresh token
+          const storedRefreshToken = typeof window !== "undefined" ? localStorage.getItem("sago_admin_refresh_token") : null;
+          if (storedRefreshToken && isMounted) {
+            try {
+              const { data: refreshData, error: refreshError } = await client.auth.refreshSession({
+                refresh_token: storedRefreshToken,
+              });
+              if (!refreshError && refreshData?.session?.access_token) {
+                setAuthToken(refreshData.session.access_token);
+                setUserEmail(refreshData.session.user?.email || "Admin");
+                if (typeof window !== "undefined") {
+                  localStorage.setItem("sago_admin_token", refreshData.session.access_token);
+                  localStorage.setItem("sago_admin_refresh_token", refreshData.session.refresh_token);
+                }
+                const gen = ++authGenerationRef.current;
+                await loadData(refreshData.session.access_token, gen);
+              }
+            } catch {
+              // Refresh failed, will fall through to not authenticated
+            }
+          }
         }
       } catch {
         // Not authenticated
@@ -168,10 +201,25 @@ export default function AdminPage() {
       if (event === "TOKEN_REFRESHED" && session?.access_token) {
         setAuthToken(session.access_token);
         setUserEmail(session.user?.email || "Admin");
+        if (typeof window !== "undefined") {
+          localStorage.setItem("sago_admin_token", session.access_token);
+          localStorage.setItem("sago_admin_email", session.user?.email || "Admin");
+        }
         const gen = ++authGenerationRef.current;
         loadData(session.access_token, gen);
       } else if (event === "SIGNED_OUT") {
         authGenerationRef.current += 1;
+        // Clear in-memory session and cached member state
+        setIsAuthenticated(false);
+        setAuthToken("");
+        setUserEmail("");
+        setMembers([]);
+        setStats(null);
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("sago_admin_token");
+          localStorage.removeItem("sago_admin_refresh_token");
+          localStorage.removeItem("sago_admin_email");
+        }
       }
     });
 
@@ -208,11 +256,16 @@ export default function AdminPage() {
         if (typeof window !== "undefined") {
           localStorage.setItem("sago_admin_token", data.token);
           localStorage.setItem("sago_admin_email", data.email || email.trim());
+          if (data.refreshToken) {
+            localStorage.setItem("sago_admin_refresh_token", data.refreshToken);
+          }
         }
         const gen = ++authGenerationRef.current;
-        await loadData(data.token, gen);
-        setIsAuthenticated(true);
-        showToast(`Welcome back, ${data.email || "Admin"}`);
+        const loadSuccess = await loadData(data.token, gen);
+        if (loadSuccess) {
+          setIsAuthenticated(true);
+          showToast(`Welcome back, ${data.email || "Admin"}`);
+        }
         setIsVerifying(false);
         return;
       }
@@ -235,9 +288,11 @@ export default function AdminPage() {
         localStorage.setItem("sago_admin_email", sbData.user?.email || email);
       }
       const gen = ++authGenerationRef.current;
-      await loadData(sbData.session.access_token, gen);
-      setIsAuthenticated(true);
-      showToast(`Welcome back, ${sbData.user?.email || "Admin"}`);
+      const loadSuccess = await loadData(sbData.session.access_token, gen);
+      if (loadSuccess) {
+        setIsAuthenticated(true);
+        showToast(`Welcome back, ${sbData.user?.email || "Admin"}`);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Login failed";
       setAuthError(msg);
@@ -249,6 +304,7 @@ export default function AdminPage() {
     try {
       if (typeof window !== "undefined") {
         localStorage.removeItem("sago_admin_token");
+        localStorage.removeItem("sago_admin_refresh_token");
         localStorage.removeItem("sago_admin_email");
       }
       const client = getBrowserSupabase();

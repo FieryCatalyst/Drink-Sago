@@ -211,6 +211,7 @@ export default function PartnerWizard() {
     status: string;
     submittedAt: string;
   } | null>(null);
+  const [savedReference, setSavedReference] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -229,6 +230,11 @@ export default function PartnerWizard() {
           setFormData((prev) => ({ ...prev, ...parsed }));
           showToast("Resumed your saved application draft");
         }
+      }
+      // Load saved reference for subsequent draft saves
+      const savedRef = localStorage.getItem("sago_partner_draft_reference");
+      if (savedRef) {
+        setSavedReference(savedRef);
       }
     } catch {
       // LocalStorage unavailable
@@ -353,14 +359,24 @@ export default function PartnerWizard() {
       localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formData));
 
       // Also persist to server draft registry
+      // Use savedReference as ownershipToken when updating existing draft
+      const ownershipToken = savedReference ? localStorage.getItem("sago_partner_draft_id") : undefined;
       const res = await fetch("/api/partners/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: formData, isDraft: true }),
+        body: JSON.stringify({ data: formData, isDraft: true, existingReference: savedReference, ownershipToken }),
       });
 
       if (res.ok) {
         const d = await res.json();
+        if (d.reference) {
+          setSavedReference(d.reference);
+          localStorage.setItem("sago_partner_draft_reference", d.reference);
+          // Store the record ID for ownership token
+          if (d.recordId) {
+            localStorage.setItem("sago_partner_draft_id", d.recordId);
+          }
+        }
         showToast(`Draft saved successfully (Ref: ${d.reference})`);
       } else {
         showToast("Draft saved to browser storage.");
@@ -380,10 +396,12 @@ export default function PartnerWizard() {
     setIsSubmitting(true);
 
     try {
+      // Include ownership token from sago_partner_draft_id for final submission
+      const ownershipToken = localStorage.getItem("sago_partner_draft_id");
       const res = await fetch("/api/partners/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: formData, isDraft: false }),
+        body: JSON.stringify({ data: formData, isDraft: false, existingReference: savedReference, ownershipToken }),
       });
 
       const resData = await res.json();
@@ -392,8 +410,10 @@ export default function PartnerWizard() {
         throw new Error(resData.error || "Submission could not be completed.");
       }
 
-      // Clear draft
+      // Clear draft and ownership token on successful submission
       localStorage.removeItem(LOCAL_STORAGE_KEY);
+      localStorage.removeItem("sago_partner_draft_reference");
+      localStorage.removeItem("sago_partner_draft_id");
 
       setSubmissionResult({
         reference: resData.reference,

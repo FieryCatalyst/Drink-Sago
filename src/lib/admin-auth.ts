@@ -17,7 +17,7 @@ export async function verifyAdminRequest(request: Request): Promise<AdminAuthRes
     };
   }
 
-  // Check Supabase session token
+  // Check Supabase session token - this is the only supported authentication method
   if (hasSupabaseServerEnv()) {
     try {
       const supabase = getSupabaseClient();
@@ -43,24 +43,7 @@ export async function verifyAdminRequest(request: Request): Promise<AdminAuthRes
     }
   }
 
-  // Allow admin password check token or dev token fallback
-  const adminPassword = process.env.ADMIN_PASSWORD || "sago2026";
-  const validTokens = [
-    adminPassword,
-    `admin-token-${adminPassword}`,
-    "sago2026",
-    "admin-token-sago2026",
-    "sago26",
-    "admin-token-sago26",
-  ];
-
-  if (validTokens.includes(bearerToken) || (bearerToken.startsWith("admin-token-") && bearerToken.length > 12)) {
-    return {
-      authorized: true,
-      email: process.env.ADMIN_EMAIL || "itusharpandey.12@gmail.com",
-    };
-  }
-
+  // No fallback tokens - fail closed
   return {
     authorized: false,
     error: "Session expired or unauthorized. Please re-authenticate.",

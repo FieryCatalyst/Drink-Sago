@@ -1,10 +1,9 @@
 "use client";
 
 import React from "react";
-import { Wine, Tag, Sparkles, Coins, Info, Check, Plus, Trash2 } from "lucide-react";
+import { Wine, Tag, Coins, Info, Check, Plus, Trash2 } from "lucide-react";
 import { PartnerFormData, ParticipatingProductItem } from "@/lib/partner-types";
 import { PARTNERSHIP_TYPES, AFRICAN_CURRENCIES } from "@/lib/kenya-data";
-import { getSlotRewardRange } from "@/lib/partner-validation";
 
 interface Step4Props {
   data: PartnerFormData;
@@ -231,7 +230,7 @@ export default function Step4PartnershipProducts({ data, errors, onChange }: Ste
           </div>
         </div>
         <p className="section-subcard__desc">
-          Select each product your venue will carry and set your standard bar / menu price. Customer discounts are generated dynamically through customer spins on the SAGO 3D Slot Machine game and honored upon coupon redemption.
+          Select each product your venue will carry and set your standard bar / menu price.
         </p>
 
         {errors.products && (
@@ -253,7 +252,6 @@ export default function Step4PartnershipProducts({ data, errors, onChange }: Ste
           {(data.products || []).map((product, idx) => {
             const isSelected = product.selected;
             const isCustom = product.id.startsWith("custom_");
-            const rewardInfo = getSlotRewardRange(product.servingType);
 
             return (
               <div
@@ -306,12 +304,6 @@ export default function Step4PartnershipProducts({ data, errors, onChange }: Ste
                   </label>
 
                   <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                    {isSelected && (
-                      <span className="slot-voucher-badge">
-                        <Sparkles size={13} className="slot-icon-gold" />
-                        Slot Promo: {rewardInfo.label}
-                      </span>
-                    )}
                     {isCustom && (
                       <button
                         type="button"
@@ -352,7 +344,7 @@ export default function Step4PartnershipProducts({ data, errors, onChange }: Ste
                         </div>
                       )}
 
-                      <div className="col-5 form-field">
+                      <div className="col-6 form-field">
                         <label className="field-label">
                           <span>Standard Bar / Retail Price ({product.currency}) <span className="required-star">*</span></span>
                         </label>
@@ -373,52 +365,6 @@ export default function Step4PartnershipProducts({ data, errors, onChange }: Ste
                         {errors[`prod_${idx}_standardPrice`] && (
                           <span className="field-error-msg">{errors[`prod_${idx}_standardPrice`]}</span>
                         )}
-                        <span className="field-helper">
-                          Your standard menu price before customer SAGO Slot Machine discounts.
-                        </span>
-                      </div>
-
-                      <div className="col-7 form-field">
-                        <div className="slot-campaign-breakdown">
-                          <div className="slot-campaign-header">
-                            <div className="slot-campaign-title">
-                              <Sparkles size={14} className="slot-icon-gold" />
-                              <span>SAGO Slot Machine Redemption Matrix</span>
-                            </div>
-                            <span className="slot-campaign-pill">{rewardInfo.label}</span>
-                          </div>
-
-                          <div className="slot-campaign-tiers">
-                            <div className="slot-tier-chip">
-                              <span className="slot-tier-name">Low Reward (Tier 5)</span>
-                              <span className="slot-tier-price">
-                                {product.standardPrice > 0 ? (
-                                  <>
-                                    Patron pays: <strong>{product.currency} {Math.round(product.standardPrice * (1 - rewardInfo.minPercent / 100)).toLocaleString()}</strong> ({rewardInfo.minPercent}% off)
-                                  </>
-                                ) : (
-                                  "—"
-                                )}
-                              </span>
-                            </div>
-                            <div className="slot-tier-chip jackpot">
-                              <span className="slot-tier-name">Jackpot Reward (Tier 1)</span>
-                              <span className="slot-tier-price">
-                                {product.standardPrice > 0 ? (
-                                  <>
-                                    Patron pays: <strong>{product.currency} {Math.round(product.standardPrice * (1 - rewardInfo.maxPercent / 100)).toLocaleString()}</strong> ({rewardInfo.maxPercent}% off)
-                                  </>
-                                ) : (
-                                  "—"
-                                )}
-                              </span>
-                            </div>
-                          </div>
-
-                          <p className="slot-campaign-note">
-                            {rewardInfo.description}. Patrons win valid codes via the SAGO Slot Machine; your venue charges the discounted rate and reconciles per commercial settlement.
-                          </p>
-                        </div>
                       </div>
                     </div>
                   </div>
