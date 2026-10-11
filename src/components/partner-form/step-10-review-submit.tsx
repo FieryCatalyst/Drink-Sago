@@ -726,10 +726,24 @@ export default function Step10ReviewSubmit({
                   className="btn-secondary"
                   style={{ padding: "0.3rem 0.65rem", fontSize: "0.72rem" }}
                 >
-                  <Edit3 size={11} /> Edit Step 8
+                  <Edit3 size={11} /> {isComplete ? "Edit Step 8" : "Complete Step 8 ➔"}
                 </button>
               </div>
             </div>
+
+            {!isComplete && (
+              <div className="section-missing-alert">
+                <div className="section-missing-alert__title">
+                  <AlertTriangle size={13} color="#ef5350" />
+                  <span>Missing required marketing permissions:</span>
+                </div>
+                <ul className="section-missing-alert__list">
+                  {stepErrs.map((err, i) => (
+                    <li key={i}>• {err}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="form-grid" style={{ fontSize: "0.82rem" }}>
               <div className="col-6">

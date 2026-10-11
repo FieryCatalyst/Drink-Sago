@@ -219,6 +219,7 @@ export default function PartnerWizard() {
     errors: Record<string, string>;
     targetStep: number;
   } | null>(null);
+  const [isModalSaving, setIsModalSaving] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -344,16 +345,21 @@ export default function PartnerWizard() {
   };
 
   const handleModalSaveAndProceed = async () => {
-    await handleSaveDraft();
-    if (incompleteModalData) {
-      const next = incompleteModalData.targetStep;
-      setCurrentStep(next);
-      setMaxStepVisited((prev) => Math.max(prev, next));
-      setStepErrors({});
-      setShowIncompleteModal(false);
-      setIncompleteModalData(null);
-      scrollToTop();
-      showToast("Draft saved. Remember to complete all required fields before final submission.");
+    setIsModalSaving(true);
+    try {
+      await handleSaveDraft();
+      if (incompleteModalData) {
+        const next = incompleteModalData.targetStep;
+        setCurrentStep(next);
+        setMaxStepVisited((prev) => Math.max(prev, next));
+        setStepErrors({});
+        setShowIncompleteModal(false);
+        setIncompleteModalData(null);
+        scrollToTop();
+        showToast("Draft saved. Remember to complete all required fields before final submission.");
+      }
+    } finally {
+      setIsModalSaving(false);
     }
   };
 
@@ -386,12 +392,17 @@ export default function PartnerWizard() {
   };
 
   const handleSaveAndReturnToReview = async () => {
-    await handleSaveDraft();
-    setCurrentStep(10);
-    setCameFromReview(false);
-    setStepErrors({});
-    scrollToTop();
-    showToast("Saved updates! Returned to Step 10 Review.");
+    setIsModalSaving(true);
+    try {
+      await handleSaveDraft();
+      setCurrentStep(10);
+      setCameFromReview(false);
+      setStepErrors({});
+      scrollToTop();
+      showToast("Saved updates! Returned to Step 10 Review.");
+    } finally {
+      setIsModalSaving(false);
+    }
   };
 
   const handleSaveDraft = async () => {
@@ -812,6 +823,7 @@ export default function PartnerWizard() {
                   setStepErrors(incompleteModalData.errors);
                 }}
                 className="btn-secondary"
+                disabled={isModalSaving}
               >
                 Stay on this Page
               </button>
@@ -820,6 +832,7 @@ export default function PartnerWizard() {
                 type="button"
                 onClick={handleModalSaveAndProceed}
                 className="btn-primary"
+                disabled={isModalSaving}
               >
                 <Save size={15} /> Save Draft & Proceed <ChevronRight size={15} />
               </button>

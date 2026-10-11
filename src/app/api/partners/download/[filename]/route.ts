@@ -7,6 +7,14 @@ import { hasSupabaseServerEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
+function buildContentDisposition(filename: string): string {
+  // RFC 5987 encoding for filename*
+  const encoded = encodeURIComponent(filename).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+  // ASCII fallback: strip non-ASCII and replace quotes
+  const asciiFallback = filename.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "'");
+  return `inline; filename="${asciiFallback}"; filename*=UTF-8''${encoded}`;
+}
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ filename: string }> }
@@ -35,12 +43,31 @@ export async function GET(
     if (hasSupabaseServerEnv()) {
       try {
         const supabase = getSupabaseAdmin();
-        const { data: docRecord } = await supabase
+        let docRecord = null;
+
+        // Check if filename is a valid UUID for id lookup
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(filename);
+
+        // Always query by file_name to handle punctuation correctly
+        const { data: byName } = await supabase
           .from("partner_documents")
           .select("*")
-          .or(`file_name.eq.${filename},id.eq.${filename}`)
+          .eq("file_name", filename)
           .limit(1)
           .maybeSingle();
+
+        if (byName) {
+          docRecord = byName;
+        } else if (isUuid) {
+          // Only query by id if filename is a valid UUID
+          const { data: byId } = await supabase
+            .from("partner_documents")
+            .select("*")
+            .eq("id", filename)
+            .limit(1)
+            .maybeSingle();
+          docRecord = byId;
+        }
 
         if (docRecord?.storage_path) {
           // If stored as Data URI in Supabase DB
@@ -54,7 +81,7 @@ export async function GET(
                 headers: {
                   "Content-Type": contentType,
                   "Content-Length": fileBuffer.length.toString(),
-                  "Content-Disposition": `inline; filename="${docRecord.file_name || filename}"`,
+                  "Content-Disposition": buildContentDisposition(docRecord.file_name || filename),
                   "Cache-Control": "private, max-age=3600",
                   "X-Content-Type-Options": "nosniff",
                 },
@@ -74,7 +101,7 @@ export async function GET(
               headers: {
                 "Content-Type": docRecord.mime_type || "application/octet-stream",
                 "Content-Length": fileBuffer.length.toString(),
-                "Content-Disposition": `inline; filename="${docRecord.file_name || filename}"`,
+                "Content-Disposition": buildContentDisposition(docRecord.file_name || filename),
                 "Cache-Control": "private, max-age=3600",
                 "X-Content-Type-Options": "nosniff",
               },
@@ -103,7 +130,7 @@ export async function GET(
         headers: {
           "Content-Type": contentType,
           "Content-Length": stat.size.toString(),
-          "Content-Disposition": `inline; filename="${filename}"`,
+          "Content-Disposition": buildContentDisposition(filename),
           "Cache-Control": "private, max-age=3600",
           "X-Content-Type-Options": "nosniff",
         },

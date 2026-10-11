@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     let fileUrl = "";
     let storagePath = "";
 
-    // Store in Supabase: attempt Supabase Storage bucket first, fallback to Supabase Base64 data URI
+    // Store in Supabase Storage bucket
     if (hasSupabaseServerEnv()) {
       try {
         const supabase = getSupabaseAdmin();
@@ -108,22 +108,24 @@ export async function POST(request: Request) {
           });
 
         if (!uploadError && uploadData) {
-          const { data: publicUrlData } = supabase.storage
-            .from("partner-documents")
-            .getPublicUrl(bucketPath);
-          fileUrl = publicUrlData.publicUrl;
           storagePath = bucketPath;
+          // Use authenticated download route instead of public URL
+          fileUrl = `/api/partners/download/${storedFileName}`;
+        } else {
+          throw uploadError || new Error("Storage upload failed");
         }
       } catch (storageErr) {
-        console.warn("[Upload API] Supabase storage upload warning:", storageErr);
+        console.error("[Upload API] Supabase storage upload failed:", storageErr);
+        return NextResponse.json(
+          { error: "Failed to store document in secure storage. Please try again." },
+          { status: 500 }
+        );
       }
-    }
-
-    // If storage bucket was not configured or not accessible, store as secure Base64 Data URI in Supabase DB
-    if (!fileUrl) {
-      const dataUri = `data:${detectedMime};base64,${buffer.toString("base64")}`;
-      fileUrl = dataUri;
-      storagePath = dataUri;
+    } else {
+      return NextResponse.json(
+        { error: "Secure storage is not configured. Please contact support." },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({

@@ -322,28 +322,43 @@ export async function saveApplication(
       }
 
       // Persist documents directly to Supabase partner_documents table
-      if (Array.isArray(formData.documents) && formData.documents.length > 0) {
-        try {
-          await supabase.from("partner_documents").delete().eq("application_id", newRecord.id);
-        } catch {
-          // Ignored
+      // Always run delete, then batch insert valid documents
+      try {
+        const { error: delErr } = await supabase
+          .from("partner_documents")
+          .delete()
+          .eq("application_id", newRecord.id);
+        if (delErr) {
+          throw new Error(`Failed to clear existing documents: ${delErr.message}`);
         }
+      } catch (delErr) {
+        console.error("[Storage] Document deletion failed:", delErr);
+        throw delErr;
+      }
 
-        for (const doc of formData.documents) {
-          if (!doc || !doc.fileName) continue;
-          try {
-            await supabase.from("partner_documents").insert({
-              application_id: newRecord.id,
-              document_type: doc.documentType || "Compliance Document",
-              document_number: doc.documentNumber || null,
-              file_name: doc.fileName,
-              file_size: doc.fileSize || 0,
-              mime_type: doc.mimeType || "application/pdf",
-              storage_path: doc.storagePath || doc.fileUrl || "",
-              verification_status: "pending",
-            });
-          } catch (docErr) {
-            console.warn("[Storage] Document insert warning:", docErr);
+      if (Array.isArray(formData.documents) && formData.documents.length > 0) {
+        const validDocs = formData.documents.filter(
+          (doc) => doc && doc.fileName && doc.fileName.trim().length > 0
+        );
+
+        if (validDocs.length > 0) {
+          const rows = validDocs.map((doc) => ({
+            application_id: newRecord.id,
+            document_type: doc.documentType || "Compliance Document",
+            document_number: doc.documentNumber || null,
+            file_name: doc.fileName,
+            file_size: doc.fileSize || 0,
+            mime_type: doc.mimeType || "application/pdf",
+            storage_path: doc.storagePath || doc.fileUrl || "",
+            issuing_authority: doc.issuingAuthority || null,
+            issue_date: doc.issueDate || null,
+            expiry_date: doc.expiryDate || null,
+            verification_status: "pending",
+          }));
+
+          const { error: insErr } = await supabase.from("partner_documents").insert(rows);
+          if (insErr) {
+            throw new Error(`Failed to insert documents: ${insErr.message}`);
           }
         }
       }
@@ -472,21 +487,33 @@ function mapSupabaseRecordToApplication(
       sellsAlcohol: (data.sells_alcohol as boolean) ?? true,
       hasBarManager: (data.has_bar_manager as boolean) ?? true,
       additionalOutlets: (data.additional_outlets as any[]) ?? [],
-      documents: (docs && docs.length > 0 ? docs : (data.documents as any[]) ?? []).map((d) => ({
-        id: ns(d.id),
-        documentType: ns(d.document_type || d.documentType) || "Compliance Document",
-        documentNumber: ns(d.document_number || d.documentNumber),
-        issuingAuthority: ns(d.issuing_authority || d.issuingAuthority),
-        issueDate: ns(d.issue_date || d.issueDate),
-        expiryDate: ns(d.expiry_date || d.expiryDate),
-        fileName: ns(d.file_name || d.fileName),
-        fileSize: typeof d.file_size === "number" ? d.file_size : typeof d.fileSize === "number" ? d.fileSize : 0,
-        mimeType: ns(d.mime_type || d.mimeType) || "application/pdf",
-        fileUrl: ns(d.storage_path || d.fileUrl),
-        storagePath: ns(d.storage_path || d.storagePath),
-        uploadedAt: ns(d.created_at || d.uploadedAt) || new Date().toISOString(),
-        verificationStatus: (ns(d.verification_status || d.verificationStatus) || "pending") as any,
-      })),
+      documents: (docs && docs.length > 0 ? docs : (data.documents as any[]) ?? []).map((d) => {
+        const rawStoragePath = ns(d.storage_path || d.storagePath);
+        const rawFileUrl = ns(d.fileUrl);
+        const fileName = ns(d.file_name || d.fileName);
+        // Use download route for bucket-backed files, preserve data URIs
+        let fileUrl = rawFileUrl || rawStoragePath;
+        if (fileUrl && !fileUrl.startsWith("data:")) {
+          // Bucket path stored in storage_path - use download route with file_name
+          fileUrl = `/api/partners/download/${fileName}`;
+        }
+
+        return {
+          id: ns(d.id),
+          documentType: ns(d.document_type || d.documentType) || "Compliance Document",
+          documentNumber: ns(d.document_number || d.documentNumber),
+          issuingAuthority: ns(d.issuing_authority || d.issuingAuthority),
+          issueDate: ns(d.issue_date || d.issueDate),
+          expiryDate: ns(d.expiry_date || d.expiryDate),
+          fileName,
+          fileSize: typeof d.file_size === "number" ? d.file_size : typeof d.fileSize === "number" ? d.fileSize : 0,
+          mimeType: ns(d.mime_type || d.mimeType) || "application/pdf",
+          fileUrl,
+          storagePath: rawStoragePath,
+          uploadedAt: ns(d.created_at || d.uploadedAt) || new Date().toISOString(),
+          verificationStatus: (ns(d.verification_status || d.verificationStatus) || "pending") as any,
+        };
+      }),
       ownerFullName: ns(data.owner_full_name),
       ownerPosition: ns(data.owner_position),
       ownerNationality: ns(data.owner_nationality),
