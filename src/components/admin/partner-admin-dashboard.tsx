@@ -149,6 +149,9 @@ export default function PartnerAdminDashboard({
 
       const data = await res.json();
 
+      // Check again after body parsing - abort during parsing should not update state
+      if (controller.signal.aborted) return;
+
       if (!res.ok) {
         throw new Error(data.error || "Failed to load partner applications.");
       }

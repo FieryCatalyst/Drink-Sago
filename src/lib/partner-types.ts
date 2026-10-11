@@ -180,6 +180,9 @@ export interface PartnerFormData {
   signatoryBusinessName: string;
   signatureData: string; // Base64 png or typed signature
   signatureDate: string;
+
+  // Internal: ownership token hash for draft authorization
+  ownershipTokenHash?: string;
 }
 
 export interface VerificationChecklist {

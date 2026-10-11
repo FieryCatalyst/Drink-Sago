@@ -9,6 +9,8 @@ import {
 } from "./partner-types";
 import { hasSupabaseServerEnv } from "./env";
 import { getSupabaseClient } from "./supabase/server";
+import { REDEMPTION_RULES } from "./kenya-data";
+import { getCountryDeclarationConfig } from "./country-declarations";
 
 const DATA_DIR = path.join(process.cwd(), ".data");
 const DATA_FILE = path.join(DATA_DIR, "partner_applications.json");
@@ -88,54 +90,81 @@ export const DEFAULT_CHECKLIST: VerificationChecklist = {
   final_approval_granted: false,
 };
 
+async function hashToken(token: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(token);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
 export async function saveApplication(
   formData: PartnerFormData,
   isDraft: boolean = false,
   existingReference?: string,
   ownershipToken?: string
-): Promise<{ record: PartnerApplicationRecord; reference: string }> {
+): Promise<{ record: PartnerApplicationRecord; reference: string; newOwnershipToken?: string }> {
   const now = new Date().toISOString();
-  const apps = readLocalApplications();
 
-  let existingIndex = -1;
+  // Resolve existing record by reference using authoritative source (Supabase first, then local)
+  let existingRecord: PartnerApplicationRecord | null = null;
   if (existingReference) {
-    existingIndex = apps.findIndex((a) => a.applicationReference === existingReference);
+    existingRecord = await getApplicationByReference(existingReference);
   }
 
   // If updating an existing record, validate ownership and status
-  if (existingIndex >= 0) {
-    const existing = apps[existingIndex];
-    
+  if (existingRecord) {
     // Require ownership token for updates
     if (!ownershipToken) {
       throw new Error("Ownership token required to update existing application.");
     }
     
-    // Verify ownership token matches the record (simple check - in production use proper token validation)
-    if (existing.id !== ownershipToken) {
+    // Verify ownership token against stored hash using constant-time comparison
+    const storedHash = existingRecord.data.ownershipTokenHash;
+    if (!storedHash) {
+      throw new Error("Invalid ownership token for this application.");
+    }
+    
+    const providedHash = await hashToken(ownershipToken);
+    if (!constantTimeEqual(storedHash, providedHash)) {
       throw new Error("Invalid ownership token for this application.");
     }
     
     // Reject updates to records under review or approved
-    if (existing.status !== "draft") {
-      throw new Error(`Cannot update application with status: ${existing.status}. Only drafts can be modified.`);
+    if (existingRecord.status !== "draft") {
+      throw new Error(`Cannot update application with status: ${existingRecord.status}. Only drafts can be modified.`);
     }
-    
-    // Do not retain an approved record's partner ID through this path
-    // (but drafts shouldn't have partnerIdAssigned anyway)
   }
 
-  const reference =
-    existingIndex >= 0
-      ? apps[existingIndex].applicationReference
-      : generateApplicationReference();
+  const isUpdating = !!existingRecord;
+  
+  // If existingReference was provided but no record found, reject instead of creating new
+  if (existingReference && !existingRecord) {
+    throw new Error(`Application with reference ${existingReference} not found. Cannot create new application with existing reference.`);
+  }
+  
+  const reference = isUpdating
+    ? existingRecord!.applicationReference
+    : generateApplicationReference();
 
-  const id =
-    existingIndex >= 0 ? apps[existingIndex].id : crypto.randomUUID();
+  const id = isUpdating ? existingRecord!.id : crypto.randomUUID();
 
   const status: PartnerApplicationStatus = isDraft
     ? "draft"
     : "pending_review";
+
+  // Generate ownership token for new drafts
+  const newOwnershipToken = isDraft && !isUpdating ? crypto.randomUUID() : undefined;
+  const ownershipTokenHash = newOwnershipToken ? await hashToken(newOwnershipToken) : (isUpdating ? existingRecord!.data.ownershipTokenHash : undefined);
 
   const initialAuditLog: PartnerAuditLog = {
     id: crypto.randomUUID(),
@@ -146,29 +175,38 @@ export async function saveApplication(
     timestamp: now,
   };
 
+  // Merge formData with ownership token hash
+  // For updates: preserve existing ownershipTokenHash if formData doesn't provide one
+  // For new drafts: use newly generated hash
+  const dataWithToken = isUpdating
+    ? { ...formData, ownershipTokenHash: existingRecord!.data.ownershipTokenHash }
+    : newOwnershipToken
+      ? { ...formData, ownershipTokenHash }
+      : formData;
+
   const newRecord: PartnerApplicationRecord = {
     id,
     applicationReference: reference,
     status,
     submittedAt: now,
-    createdAt: existingIndex >= 0 ? apps[existingIndex].createdAt : now,
+    createdAt: isUpdating ? existingRecord!.createdAt : now,
     updatedAt: now,
-    data: formData,
-    checklist: existingIndex >= 0 ? apps[existingIndex].checklist : { ...DEFAULT_CHECKLIST },
+    data: dataWithToken,
+    checklist: isUpdating ? existingRecord!.checklist : { ...DEFAULT_CHECKLIST },
     auditLogs:
-      existingIndex >= 0
-        ? [initialAuditLog, ...apps[existingIndex].auditLogs]
+      isUpdating
+        ? [initialAuditLog, ...existingRecord!.auditLogs]
         : [initialAuditLog],
-    assignedOfficerId: existingIndex >= 0 ? apps[existingIndex].assignedOfficerId : undefined,
-    assignedOfficerName: existingIndex >= 0 ? apps[existingIndex].assignedOfficerName : undefined,
+    assignedOfficerId: isUpdating ? existingRecord!.assignedOfficerId : undefined,
+    assignedOfficerName: isUpdating ? existingRecord!.assignedOfficerName : undefined,
     // Do not retain partnerIdAssigned when updating a draft
     partnerIdAssigned: undefined,
     outletIdsAssigned: undefined,
-    agreementReference: existingIndex >= 0 ? apps[existingIndex].agreementReference : undefined,
-    activationDate: existingIndex >= 0 ? apps[existingIndex].activationDate : undefined,
-    renewalDate: existingIndex >= 0 ? apps[existingIndex].renewalDate : undefined,
-    internalNotes: existingIndex >= 0 ? apps[existingIndex].internalNotes : undefined,
-    decisionReason: existingIndex >= 0 ? apps[existingIndex].decisionReason : undefined,
+    agreementReference: isUpdating ? existingRecord!.agreementReference : undefined,
+    activationDate: isUpdating ? existingRecord!.activationDate : undefined,
+    renewalDate: isUpdating ? existingRecord!.renewalDate : undefined,
+    internalNotes: isUpdating ? existingRecord!.internalNotes : undefined,
+    decisionReason: isUpdating ? existingRecord!.decisionReason : undefined,
   };
 
   // 1. Try Supabase if configured
@@ -276,6 +314,7 @@ export async function saveApplication(
         signature_date: formData.signatureDate || now.split("T")[0],
         status,
         updated_at: now,
+        ownership_token_hash: ownershipTokenHash,
       });
       if (sbError) {
         console.error("[Storage] Supabase upsert error:", sbError);
@@ -288,14 +327,16 @@ export async function saveApplication(
   }
 
   // 2. Persist to local JSON file store
-  if (existingIndex >= 0) {
-    apps[existingIndex] = newRecord;
+  const apps = readLocalApplications();
+  const localIndex = apps.findIndex((a) => a.applicationReference === reference);
+  if (localIndex >= 0) {
+    apps[localIndex] = newRecord;
   } else {
     apps.unshift(newRecord);
   }
   writeLocalApplications(apps);
 
-  return { record: newRecord, reference };
+  return { record: newRecord, reference, newOwnershipToken };
 }
 
 export async function getApplicationByReference(
@@ -433,7 +474,12 @@ function mapSupabaseRecordToApplication(data: Record<string, unknown>): PartnerA
       hasComputerDevice: (data.has_computer_device as boolean) ?? true,
       preferredRedemptionDevice: ns(data.preferred_redemption_device),
       requiresOnboardingAssistance: (data.requires_onboarding_assistance as boolean) ?? true,
-      acknowledgedRedemptionRules: (data.redemption_rules_acknowledged as boolean[]) ?? [],
+      acknowledgedRedemptionRules: (() => {
+        const val = data.redemption_rules_acknowledged;
+        if (Array.isArray(val)) return val;
+        if (val === true) return new Array(REDEMPTION_RULES.length).fill(true);
+        return new Array(REDEMPTION_RULES.length).fill(false);
+      })(),
       requiresSettlement: (data.requires_settlement as boolean) ?? false,
       settlementArrangement: ns(data.settlement_arrangement),
       settlementBankName: ns(data.settlement_bank_name),
@@ -457,7 +503,14 @@ function mapSupabaseRecordToApplication(data: Record<string, unknown>): PartnerA
       marketingContactPerson: ns(data.marketing_contact_person),
       marketingContactEmail: ns(data.marketing_contact_email),
       marketingContactPhone: ns(data.marketing_contact_phone),
-      declarations: (data.declarations_acknowledged as boolean[]) ?? [],
+      declarations: (() => {
+        const val = data.declarations_acknowledged;
+        const country = ns(data.country) || "Kenya";
+        const expectedCount = getCountryDeclarationConfig(country).declarations.length;
+        if (Array.isArray(val)) return val;
+        if (val === true) return new Array(expectedCount).fill(true);
+        return new Array(expectedCount).fill(false);
+      })(),
       privacyNoticeAcknowledged: (data.privacy_notice_acknowledged as boolean) ?? false,
       marketingCommsConsent: (data.marketing_comms_consent as boolean) ?? false,
       signatoryFullName: ns(data.signatory_full_name),
@@ -465,6 +518,7 @@ function mapSupabaseRecordToApplication(data: Record<string, unknown>): PartnerA
       signatoryBusinessName: ns(data.signatory_business_name),
       signatureData: ns(data.signature_data),
       signatureDate: ns(data.signature_date),
+      ownershipTokenHash: ns(data.ownership_token_hash) || undefined,
     },
     assignedOfficerId: ns(data.assigned_officer_id),
     assignedOfficerName: ns(data.assigned_officer_name),
