@@ -7,11 +7,12 @@ import Link from "next/link";
 import { FaFacebookF, FaInstagram, FaTiktok } from "react-icons/fa";
 
 const NAV_LINKS = [
-  { label: "Home",             href: "/",           index: 0 },
-  { label: "Our Story",         href: "/about",       index: 1 },
-  { label: "SAGO Products",    href: "/collection",  index: 2 },
-  { label: "Cocktail Recipes", href: "/cocktails",   index: 3 },
-  { label: "Promotions",       href: "/promotions",  index: 4 },
+  { label: "Home",             href: "/",                  index: 0 },
+  { label: "Our Story",         href: "/about",              index: 1 },
+  { label: "SAGO Products",    href: "/collection",         index: 2 },
+  { label: "Cocktail Recipes", href: "/cocktails",          index: 3 },
+  { label: "Promotions",       href: "/promotions",         index: 4 },
+  { label: "Partner With Us",  href: "/partners/register",  index: 5 },
 ];
 
 export default function SiteNav() {
@@ -108,7 +109,7 @@ export default function SiteNav() {
           {/* The SAGO Collective / SAGO Club */}
           <Link
             href="/club"
-            style={{ "--itemIndex": 5 } as React.CSSProperties}
+            style={{ "--itemIndex": 6 } as React.CSSProperties}
             tabIndex={menuOpen ? 0 : -1}
             className={isActive("/club") ? "site-nav__active" : undefined}
             onClick={close}

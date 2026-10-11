@@ -17,54 +17,13 @@ interface Member {
   updated_at: string;
 }
 
+import { verifyAdminRequest } from "@/lib/admin-auth";
+
 export const dynamic = "force-dynamic";
-
-async function verifyAdmin(
-  request: Request
-): Promise<{ authorized: boolean; email?: string; error?: string }> {
-  const bearerToken = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-
-  if (!bearerToken) {
-    return {
-      authorized: false,
-      error: "Authentication required. Please sign in with your user credentials.",
-    };
-  }
-
-  if (hasSupabaseServerEnv()) {
-    try {
-      const supabase = getSupabaseClient();
-      const { data, error } = await supabase.auth.getUser(bearerToken);
-      if (!error && data?.user) {
-        const allowedEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
-        if (!allowedEmail) {
-          return {
-            authorized: false,
-            error: "Administrator access is not configured. Please set ADMIN_EMAIL.",
-          };
-        }
-        if (data.user.email?.toLowerCase() !== allowedEmail) {
-          return {
-            authorized: false,
-            error: `Access denied. ${data.user.email} does not have administrator privileges.`,
-          };
-        }
-        return { authorized: true, email: data.user.email };
-      }
-    } catch (err) {
-      console.error("[Admin API] Auth verification error:", err);
-    }
-  }
-
-  return {
-    authorized: false,
-    error: "Session expired or invalid credentials. Please sign in again.",
-  };
-}
 
 
 export async function GET(request: Request) {
-  const auth = await verifyAdmin(request);
+  const auth = await verifyAdminRequest(request);
   if (!auth.authorized) {
     return NextResponse.json(
       { error: auth.error || "Unauthorized. Please sign in." },
@@ -157,7 +116,7 @@ const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function DELETE(request: Request) {
-  const auth = await verifyAdmin(request);
+  const auth = await verifyAdminRequest(request);
   if (!auth.authorized) {
     return NextResponse.json(
       { error: auth.error || "Unauthorized. Please sign in." },

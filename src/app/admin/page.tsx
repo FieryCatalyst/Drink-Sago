@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   Users,
+  Building2,
   Calendar,
   Award,
   Globe,
@@ -22,6 +23,7 @@ import {
   UserCheck,
 } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/client";
+import PartnerAdminDashboard from "@/components/admin/partner-admin-dashboard";
 import "./admin.css";
 
 interface Member {
@@ -58,6 +60,7 @@ export default function AdminPage() {
   const [userEmail, setUserEmail] = useState<string>("");
   const [authError, setAuthError] = useState("");
   const [isVerifying, setIsVerifying] = useState(false);
+  const [adminSection, setAdminSection] = useState<"collective" | "partners">("partners");
 
   // Track current auth generation to invalidate stale loads
   const authGenerationRef = useRef(0);
@@ -124,6 +127,18 @@ export default function AdminPage() {
     let isMounted = true;
 
     async function checkExistingSession() {
+      // Check stored token first
+      const storedToken = typeof window !== "undefined" ? localStorage.getItem("sago_admin_token") : null;
+      const storedEmail = typeof window !== "undefined" ? localStorage.getItem("sago_admin_email") : null;
+      if (storedToken && isMounted) {
+        setAuthToken(storedToken);
+        setUserEmail(storedEmail || "Admin");
+        const gen = ++authGenerationRef.current;
+        loadData(storedToken, gen);
+        setIsAuthenticated(true);
+        return;
+      }
+
       try {
         const client = getBrowserSupabase();
         const { data } = await client.auth.getSession();
@@ -178,21 +193,51 @@ export default function AdminPage() {
     setAuthError("");
 
     try {
+      // Try dedicated server admin login endpoint (supports both sago2026 and sago26)
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.success && data.token) {
+        setAuthToken(data.token);
+        setUserEmail(data.email || email.trim());
+        if (typeof window !== "undefined") {
+          localStorage.setItem("sago_admin_token", data.token);
+          localStorage.setItem("sago_admin_email", data.email || email.trim());
+        }
+        const gen = ++authGenerationRef.current;
+        await loadData(data.token, gen);
+        setIsAuthenticated(true);
+        showToast(`Welcome back, ${data.email || "Admin"}`);
+        setIsVerifying(false);
+        return;
+      }
+
+      // Supabase direct fallback
       const client = getBrowserSupabase();
-      const { data, error } = await client.auth.signInWithPassword({
+      const { data: sbData, error: sbError } = await client.auth.signInWithPassword({
         email: email.trim(),
         password,
       });
 
-      if (error || !data.session) {
-        throw new Error(error?.message || "Invalid user credentials.");
+      if (sbError || !sbData.session) {
+        throw new Error(data.error || sbError?.message || "Invalid administrator credentials.");
       }
 
-      setAuthToken(data.session.access_token);
-      setUserEmail(data.user?.email || email);
+      setAuthToken(sbData.session.access_token);
+      setUserEmail(sbData.user?.email || email);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("sago_admin_token", sbData.session.access_token);
+        localStorage.setItem("sago_admin_email", sbData.user?.email || email);
+      }
       const gen = ++authGenerationRef.current;
-      await loadData(data.session.access_token, gen);
-      showToast(`Welcome back, ${data.user?.email || "Admin"}`);
+      await loadData(sbData.session.access_token, gen);
+      setIsAuthenticated(true);
+      showToast(`Welcome back, ${sbData.user?.email || "Admin"}`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Login failed";
       setAuthError(msg);
@@ -202,6 +247,10 @@ export default function AdminPage() {
 
   const handleLogout = async () => {
     try {
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("sago_admin_token");
+        localStorage.removeItem("sago_admin_email");
+      }
       const client = getBrowserSupabase();
       await client.auth.signOut();
     } catch {
@@ -472,8 +521,73 @@ export default function AdminPage() {
         </div>
       </header>
 
-      {/* Main Container */}
-      <div className="admin-container">
+      {/* Admin Module Switcher */}
+      <div
+        style={{
+          background: "#0d0d0d",
+          borderBottom: "1px solid rgba(176, 141, 87, 0.2)",
+          padding: "0.5rem 1.5rem",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "1400px",
+            margin: "0 auto",
+            display: "flex",
+            gap: "0.75rem",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setAdminSection("partners")}
+            style={{
+              background: adminSection === "partners" ? "rgba(176, 141, 87, 0.2)" : "transparent",
+              border: "1px solid",
+              borderColor: adminSection === "partners" ? "#b08d57" : "transparent",
+              color: adminSection === "partners" ? "#d4af37" : "rgba(245, 241, 232, 0.6)",
+              padding: "0.45rem 1rem",
+              borderRadius: "8px",
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.45rem",
+            }}
+          >
+            <Building2 size={15} /> Partner Applications & Verification
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAdminSection("collective")}
+            style={{
+              background: adminSection === "collective" ? "rgba(176, 141, 87, 0.2)" : "transparent",
+              border: "1px solid",
+              borderColor: adminSection === "collective" ? "#b08d57" : "transparent",
+              color: adminSection === "collective" ? "#d4af37" : "rgba(245, 241, 232, 0.6)",
+              padding: "0.45rem 1rem",
+              borderRadius: "8px",
+              fontSize: "0.82rem",
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.45rem",
+            }}
+          >
+            <Users size={15} /> SAGO Collective Members
+          </button>
+        </div>
+      </div>
+
+      {adminSection === "partners" ? (
+        <div style={{ maxWidth: "1400px", margin: "0 auto", width: "100%" }}>
+          <PartnerAdminDashboard authToken={authToken} adminEmail={userEmail} />
+        </div>
+      ) : (
+        /* Main Container */
+        <div className="admin-container">
         {loadError && <div className="admin-error-text mb-4">{loadError}</div>}
 
         {/* KPI Metrics Grid */}
@@ -699,6 +813,7 @@ export default function AdminPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deletingMember && (

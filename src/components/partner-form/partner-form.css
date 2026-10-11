@@ -1,0 +1,712 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   SAGO BUSINESS PARTNER ONBOARDING WIZARD STYLES
+   Palette: Background (#0b0b0b), Charcoal (#171717), Brass (#b08d57), Oxblood (#6f141e)
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+.partner-wizard-page {
+  min-height: 100vh;
+  background-color: #0b0b0b;
+  color: #f5f1e8;
+  font-family: var(--font-body, inherit);
+  display: flex;
+  flex-direction: column;
+}
+
+.partner-wizard-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8.5rem 1.5rem 5rem;
+  width: 100%;
+}
+
+/* ── Hero Header ─────────────────────────────────────────────── */
+.partner-hero {
+  text-align: center;
+  max-width: 860px;
+  margin: 0 auto 3rem;
+}
+
+.partner-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(176, 141, 87, 0.12);
+  border: 1px solid rgba(176, 141, 87, 0.35);
+  color: #b08d57;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+}
+
+.partner-hero__title {
+  font-size: clamp(2.2rem, 4.5vw, 3.6rem);
+  font-weight: 600;
+  line-height: 1.15;
+  color: #f5f1e8;
+  letter-spacing: 0.02em;
+  margin-bottom: 1rem;
+}
+
+.partner-hero__title em {
+  font-style: italic;
+  color: #b08d57;
+}
+
+.partner-hero__subtitle {
+  font-size: clamp(0.95rem, 1.8vw, 1.15rem);
+  color: rgba(245, 241, 232, 0.7);
+  line-height: 1.6;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* ── Stepper Navigation Bar ───────────────────────────────────── */
+.stepper-nav {
+  background: rgba(23, 23, 23, 0.7);
+  border: 1px solid rgba(176, 141, 87, 0.2);
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin-bottom: 2.5rem;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.stepper-progress-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+  position: relative;
+}
+
+.stepper-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #b08d57 0%, #d4af37 100%);
+  border-radius: 999px;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 12px rgba(176, 141, 87, 0.6);
+}
+
+.stepper-steps-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scrollbar-width: thin;
+}
+
+.step-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  transition: all 0.25s ease;
+  min-width: 80px;
+  color: rgba(245, 241, 232, 0.5);
+}
+
+.step-item:hover:not(:disabled) {
+  color: #f5f1e8;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.step-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.step-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: 1.5px solid rgba(245, 241, 232, 0.2);
+  background: rgba(18, 18, 18, 0.9);
+  color: rgba(245, 241, 232, 0.6);
+  transition: all 0.25s ease;
+}
+
+.step-item.is-current .step-badge {
+  background: #b08d57;
+  color: #0b0b0b;
+  border-color: #b08d57;
+  box-shadow: 0 0 16px rgba(176, 141, 87, 0.5);
+  transform: scale(1.1);
+}
+
+.step-item.is-completed .step-badge {
+  background: rgba(176, 141, 87, 0.2);
+  color: #b08d57;
+  border-color: #b08d57;
+}
+
+.step-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.step-item.is-current .step-label {
+  color: #b08d57;
+  font-weight: 700;
+}
+
+/* ── Wizard Form Card ────────────────────────────────────────── */
+.partner-form-card {
+  background: rgba(23, 23, 23, 0.85);
+  border: 1px solid rgba(176, 141, 87, 0.22);
+  border-radius: 20px;
+  padding: 2.5rem 2.25rem;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), 0 0 35px rgba(176, 141, 87, 0.04);
+}
+
+@media (max-width: 768px) {
+  .partner-form-card {
+    padding: 1.75rem 1.25rem;
+  }
+}
+
+.step-header {
+  border-bottom: 1px solid rgba(176, 141, 87, 0.15);
+  padding-bottom: 1.75rem;
+  margin-bottom: 2rem;
+}
+
+.step-header__eyebrow {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #b08d57;
+  margin-bottom: 0.35rem;
+}
+
+.step-header__title {
+  font-size: clamp(1.4rem, 2.5vw, 1.85rem);
+  font-weight: 600;
+  color: #f5f1e8;
+  margin-bottom: 0.4rem;
+}
+
+.step-header__desc {
+  font-size: 0.92rem;
+  color: rgba(245, 241, 232, 0.65);
+  line-height: 1.5;
+}
+
+/* ── Form Grid & Inputs ──────────────────────────────────────── */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.5rem;
+}
+
+.col-12 { grid-column: span 12; }
+.col-8  { grid-column: span 8; }
+.col-6  { grid-column: span 6; }
+.col-4  { grid-column: span 4; }
+.col-3  { grid-column: span 3; }
+
+@media (max-width: 768px) {
+  .col-8, .col-6, .col-4, .col-3 {
+    grid-column: span 12;
+  }
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.field-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: rgba(245, 241, 232, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.field-label .required-star {
+  color: #e57373;
+  margin-left: 0.25rem;
+}
+
+.field-label .field-hint-inline {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: rgba(245, 241, 232, 0.45);
+}
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  background: rgba(14, 14, 14, 0.85);
+  border: 1px solid rgba(245, 241, 232, 0.15);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 0.92rem;
+  color: #f5f1e8;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus {
+  outline: none;
+  border-color: #b08d57;
+  box-shadow: 0 0 0 3px rgba(176, 141, 87, 0.2);
+  background: rgba(18, 18, 18, 0.95);
+}
+
+.form-input.has-error,
+.form-select.has-error,
+.form-textarea.has-error {
+  border-color: #e57373;
+  background: rgba(111, 20, 30, 0.15);
+}
+
+.field-error-msg {
+  font-size: 0.75rem;
+  color: #ef5350;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.field-helper {
+  font-size: 0.75rem;
+  color: rgba(245, 241, 232, 0.5);
+  line-height: 1.4;
+}
+
+/* ── Section Dividers & Subcards ─────────────────────────────── */
+.section-subcard {
+  background: rgba(15, 15, 15, 0.6);
+  border: 1px solid rgba(176, 141, 87, 0.15);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.section-subcard__title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #b08d57;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.section-subcard__desc {
+  font-size: 0.82rem;
+  color: rgba(245, 241, 232, 0.6);
+  margin-bottom: 1.25rem;
+}
+
+/* ── Checkbox / Radio Luxury Styling ─────────────────────────── */
+.custom-checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.85rem 1rem;
+  background: rgba(14, 14, 14, 0.6);
+  border: 1px solid rgba(245, 241, 232, 0.12);
+  border-radius: 10px;
+  transition: all 0.2s ease;
+}
+
+.custom-checkbox-row:hover {
+  border-color: rgba(176, 141, 87, 0.4);
+  background: rgba(176, 141, 87, 0.04);
+}
+
+.custom-checkbox-row.is-checked {
+  border-color: #b08d57;
+  background: rgba(176, 141, 87, 0.08);
+}
+
+.custom-checkbox-input {
+  width: 18px;
+  height: 18px;
+  accent-color: #b08d57;
+  cursor: pointer;
+  margin-top: 0.15rem;
+}
+
+.checkbox-text-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.checkbox-title {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #f5f1e8;
+}
+
+.checkbox-desc {
+  font-size: 0.78rem;
+  color: rgba(245, 241, 232, 0.6);
+  line-height: 1.4;
+}
+
+/* ── Document Upload Cards ───────────────────────────────────── */
+.doc-upload-card {
+  background: rgba(16, 16, 16, 0.7);
+  border: 1px dashed rgba(176, 141, 87, 0.3);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.doc-upload-card:hover {
+  border-color: #b08d57;
+  background: rgba(176, 141, 87, 0.04);
+}
+
+.doc-upload-card.has-file {
+  border-style: solid;
+  border-color: rgba(176, 141, 87, 0.5);
+  background: rgba(176, 141, 87, 0.06);
+}
+
+.doc-upload-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* ── Product Offer Cards ─────────────────────────────────────── */
+.product-card {
+  background: rgba(16, 16, 16, 0.8);
+  border: 1px solid rgba(245, 241, 232, 0.1);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.product-card.is-selected {
+  border-color: #b08d57;
+  background: rgba(176, 141, 87, 0.07);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.promo-price-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(176, 141, 87, 0.18);
+  border: 1px solid rgba(176, 141, 87, 0.4);
+  color: #d4af37;
+  padding: 0.4rem 0.8rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+/* ── Wizard Bottom Navigation Controls ───────────────────────── */
+.wizard-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(176, 141, 87, 0.15);
+  flex-wrap: wrap;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f5f1e8;
+  padding: 0.75rem 1.4rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #b08d57 0%, #8c6d3b 100%);
+  border: 1px solid #d4af37;
+  color: #0b0b0b;
+  padding: 0.75rem 1.8rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 18px rgba(176, 141, 87, 0.35);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(176, 141, 87, 0.55);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-save-draft {
+  background: transparent;
+  border: 1px dashed rgba(176, 141, 87, 0.4);
+  color: #b08d57;
+  padding: 0.75rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-save-draft:hover {
+  background: rgba(176, 141, 87, 0.1);
+  border-color: #b08d57;
+}
+
+/* ── Submission Confirmation Card ────────────────────────────── */
+.submission-card {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 3rem 2rem;
+  background: rgba(18, 18, 18, 0.95);
+  border: 1px solid rgba(176, 141, 87, 0.35);
+  border-radius: 20px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.7), 0 0 40px rgba(176, 141, 87, 0.12);
+}
+
+.submission-icon-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(176, 141, 87, 0.15);
+  border: 2px solid #b08d57;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #b08d57;
+  margin: 0 auto 1.5rem;
+}
+
+.reference-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(10, 10, 10, 0.9);
+  border: 1px solid rgba(176, 141, 87, 0.4);
+  padding: 0.65rem 1.4rem;
+  border-radius: 12px;
+  margin: 1.5rem 0;
+  font-family: monospace;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #d4af37;
+}
+
+/* ── SAGO Slot Machine Campaign Pricing Breakdown ─────────────── */
+.slot-voucher-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: linear-gradient(135deg, rgba(176, 141, 87, 0.22) 0%, rgba(212, 175, 55, 0.12) 100%);
+  border: 1px solid rgba(212, 175, 55, 0.45);
+  color: #f3cf7a;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.slot-campaign-breakdown {
+  background: rgba(10, 10, 10, 0.7);
+  border: 1px solid rgba(176, 141, 87, 0.22);
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.slot-campaign-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.slot-campaign-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #f5f1e8;
+  letter-spacing: 0.02em;
+}
+
+.slot-icon-gold {
+  color: #d4af37;
+}
+
+.slot-campaign-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  background: rgba(176, 141, 87, 0.2);
+  border: 1px solid rgba(176, 141, 87, 0.4);
+  color: #d4af37;
+}
+
+.slot-campaign-tiers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+}
+
+@media (max-width: 640px) {
+  .slot-campaign-tiers {
+    grid-template-columns: 1fr;
+  }
+}
+
+.slot-tier-chip {
+  background: rgba(20, 20, 20, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.slot-tier-chip.jackpot {
+  border-color: rgba(212, 175, 55, 0.35);
+  background: linear-gradient(135deg, rgba(20, 20, 20, 0.9) 0%, rgba(176, 141, 87, 0.12) 100%);
+}
+
+.slot-tier-name {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(245, 241, 232, 0.5);
+  font-weight: 600;
+}
+
+.slot-tier-chip.jackpot .slot-tier-name {
+  color: #d4af37;
+}
+
+.slot-tier-price {
+  font-size: 0.78rem;
+  color: rgba(245, 241, 232, 0.85);
+}
+
+.slot-tier-price strong {
+  color: #f5f1e8;
+  font-weight: 700;
+}
+
+.slot-tier-chip.jackpot .slot-tier-price strong {
+  color: #f3cf7a;
+}
+
+.slot-campaign-note {
+  font-size: 0.72rem;
+  color: rgba(245, 241, 232, 0.55);
+  line-height: 1.4;
+  margin: 0;
+}
+
+.slot-campaign-banner {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, rgba(20, 17, 12, 0.85) 0%, rgba(30, 25, 18, 0.85) 100%);
+  border: 1px solid rgba(176, 141, 87, 0.3);
+  border-radius: 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.slot-campaign-banner strong {
+  display: block;
+  font-size: 0.85rem;
+  color: #f3cf7a;
+  margin-bottom: 0.25rem;
+}
+
+.slot-campaign-banner p {
+  font-size: 0.78rem;
+  color: rgba(245, 241, 232, 0.7);
+  line-height: 1.45;
+  margin: 0;
+}
+

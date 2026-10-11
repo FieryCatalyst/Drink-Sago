@@ -6,13 +6,20 @@ function required(name: string): string {
 
 export function hasSupabaseServerEnv(): boolean {
   return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      (process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
   );
 }
 
 export function getSupabaseServerEnv() {
   const url = required("NEXT_PUBLIC_SUPABASE_URL");
-  const key = required("SUPABASE_SERVICE_ROLE_KEY");
+  const key =
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!key) {
+    throw new Error("Missing Supabase key: neither SUPABASE_SERVICE_ROLE_KEY nor NEXT_PUBLIC_SUPABASE_ANON_KEY is set");
+  }
 
   return {
     serviceRoleKey: key,

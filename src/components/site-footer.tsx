@@ -85,6 +85,7 @@ export default function SiteFooter() {
             <Link href="/cocktails">Cocktail Recipes</Link>
             <Link href="/promotions">Promotions</Link>
             <Link href="/club">The SAGO Collective</Link>
+            <Link href="/partners/register">Partner With Us</Link>
           </div>
           <Link className="button footer-collective" href="/club">
             Join the SAGO Collective <ArrowRight size={15} />
@@ -99,6 +100,9 @@ export default function SiteFooter() {
             <a className="footer-contact" href="mailto:partnerships@drinksago.com">
               <Mail size={16} /> PARTNERSHIPS@DRINKSAGO.COM
             </a>
+            <Link className="footer-contact" href="/partners/register" style={{ color: "#d4af37" }}>
+              <ArrowRight size={15} /> BECOME A SAGO PARTNER
+            </Link>
           </div>
           <p className="footer-contact-desc">
             FOR RETAILER INFORMATION, PRODUCT QUESTIONS, PARTNERSHIPS AND PRIVACY REQUESTS.
