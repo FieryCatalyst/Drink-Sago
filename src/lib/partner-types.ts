@@ -59,6 +59,7 @@ export interface DocumentUploadRecord {
   fileSize: number;
   fileUrl: string;
   mimeType: string;
+  storagePath?: string;
   verificationStatus: DocVerificationStatus;
   verificationNotes?: string;
 }

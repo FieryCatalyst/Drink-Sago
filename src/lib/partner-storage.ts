@@ -320,6 +320,33 @@ export async function saveApplication(
         console.error("[Storage] Supabase upsert error:", sbError);
         throw new Error(`Database write failed: ${sbError.message}`);
       }
+
+      // Persist documents directly to Supabase partner_documents table
+      if (Array.isArray(formData.documents) && formData.documents.length > 0) {
+        try {
+          await supabase.from("partner_documents").delete().eq("application_id", newRecord.id);
+        } catch {
+          // Ignored
+        }
+
+        for (const doc of formData.documents) {
+          if (!doc || !doc.fileName) continue;
+          try {
+            await supabase.from("partner_documents").insert({
+              application_id: newRecord.id,
+              document_type: doc.documentType || "Compliance Document",
+              document_number: doc.documentNumber || null,
+              file_name: doc.fileName,
+              file_size: doc.fileSize || 0,
+              mime_type: doc.mimeType || "application/pdf",
+              storage_path: doc.storagePath || doc.fileUrl || "",
+              verification_status: "pending",
+            });
+          } catch (docErr) {
+            console.warn("[Storage] Document insert warning:", docErr);
+          }
+        }
+      }
     } catch (sbErr) {
       console.error("[Storage] Supabase upsert failed:", sbErr);
       throw sbErr;
@@ -353,7 +380,12 @@ export async function getApplicationByReference(
         .single();
       
       if (!error && data) {
-        return mapSupabaseRecordToApplication(data);
+        const { data: docs } = await supabase
+          .from("partner_documents")
+          .select("*")
+          .eq("application_id", data.id);
+
+        return mapSupabaseRecordToApplication(data, docs || []);
       }
     } catch (sbErr) {
       console.warn("[Storage] Supabase read failed, falling back to local:", sbErr);
@@ -382,7 +414,12 @@ export async function getApplicationById(
         .single();
       
       if (!error && data) {
-        return mapSupabaseRecordToApplication(data);
+        const { data: docs } = await supabase
+          .from("partner_documents")
+          .select("*")
+          .eq("application_id", data.id);
+
+        return mapSupabaseRecordToApplication(data, docs || []);
       }
     } catch (sbErr) {
       console.warn("[Storage] Supabase read failed, falling back to local:", sbErr);
@@ -395,7 +432,10 @@ export async function getApplicationById(
   return found || null;
 }
 
-function mapSupabaseRecordToApplication(data: Record<string, unknown>): PartnerApplicationRecord {
+function mapSupabaseRecordToApplication(
+  data: Record<string, unknown>,
+  docs: any[] = []
+): PartnerApplicationRecord {
   // Helper to normalize nullable strings to empty strings
   const ns = (value: unknown): string => (value ?? "").toString();
 
@@ -432,7 +472,21 @@ function mapSupabaseRecordToApplication(data: Record<string, unknown>): PartnerA
       sellsAlcohol: (data.sells_alcohol as boolean) ?? true,
       hasBarManager: (data.has_bar_manager as boolean) ?? true,
       additionalOutlets: (data.additional_outlets as any[]) ?? [],
-      documents: (data.documents as any[]) ?? [],
+      documents: (docs && docs.length > 0 ? docs : (data.documents as any[]) ?? []).map((d) => ({
+        id: ns(d.id),
+        documentType: ns(d.document_type || d.documentType) || "Compliance Document",
+        documentNumber: ns(d.document_number || d.documentNumber),
+        issuingAuthority: ns(d.issuing_authority || d.issuingAuthority),
+        issueDate: ns(d.issue_date || d.issueDate),
+        expiryDate: ns(d.expiry_date || d.expiryDate),
+        fileName: ns(d.file_name || d.fileName),
+        fileSize: typeof d.file_size === "number" ? d.file_size : typeof d.fileSize === "number" ? d.fileSize : 0,
+        mimeType: ns(d.mime_type || d.mimeType) || "application/pdf",
+        fileUrl: ns(d.storage_path || d.fileUrl),
+        storagePath: ns(d.storage_path || d.storagePath),
+        uploadedAt: ns(d.created_at || d.uploadedAt) || new Date().toISOString(),
+        verificationStatus: (ns(d.verification_status || d.verificationStatus) || "pending") as any,
+      })),
       ownerFullName: ns(data.owner_full_name),
       ownerPosition: ns(data.owner_position),
       ownerNationality: ns(data.owner_nationality),
@@ -551,7 +605,24 @@ export async function getAllApplications(
       const { data, error } = await query.order("submitted_at", { ascending: false });
       
       if (!error && data) {
-        let results = data.map(mapSupabaseRecordToApplication);
+        const appIds = data.map((d) => d.id);
+        const { data: allDocs } = await supabase
+          .from("partner_documents")
+          .select("*")
+          .in("application_id", appIds);
+
+        const docsByApp: Record<string, any[]> = {};
+        if (allDocs) {
+          for (const d of allDocs) {
+            const appId = d.application_id;
+            docsByApp[appId] = docsByApp[appId] || [];
+            docsByApp[appId].push(d);
+          }
+        }
+
+        let results = data.map((d) =>
+          mapSupabaseRecordToApplication(d, docsByApp[d.id] || [])
+        );
         
         if (searchQuery && searchQuery.trim()) {
           const q = searchQuery.toLowerCase().trim();

@@ -212,6 +212,13 @@ export default function PartnerWizard() {
     submittedAt: string;
   } | null>(null);
   const [savedReference, setSavedReference] = useState<string | null>(null);
+  const [cameFromReview, setCameFromReview] = useState(false);
+  const [showIncompleteModal, setShowIncompleteModal] = useState(false);
+  const [incompleteModalData, setIncompleteModalData] = useState<{
+    step: number;
+    errors: Record<string, string>;
+    targetStep: number;
+  } | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -279,42 +286,33 @@ export default function PartnerWizard() {
     }
   };
 
-  const validateCurrentStep = (): boolean => {
-    let result = { isValid: true, errors: {} as Record<string, string> };
-
-    switch (currentStep) {
+  const getStepValidation = (stepNum: number) => {
+    switch (stepNum) {
       case 1:
-        result = validateStep1(formData);
-        break;
+        return validateStep1(formData);
       case 2:
-        result = validateStep2(formData);
-        break;
+        return validateStep2(formData);
       case 3:
-        result = validateStep3(formData.documents);
-        break;
+        return validateStep3(formData.documents);
       case 4:
-        result = validateStep4(formData);
-        break;
+        return validateStep4(formData);
       case 5:
-        result = validateStep5(formData);
-        break;
+        return validateStep5(formData);
       case 6:
-        result = validateStep6(formData);
-        break;
+        return validateStep6(formData);
       case 7:
-        result = validateStep7(formData);
-        break;
+        return validateStep7(formData);
       case 8:
-        result = validateStep8(formData);
-        break;
+        return validateStep8(formData);
       case 9:
-        result = validateStep9(formData);
-        break;
-      case 10:
-        result = { isValid: true, errors: {} };
-        break;
+        return validateStep9(formData);
+      default:
+        return { isValid: true, errors: {} as Record<string, string> };
     }
+  };
 
+  const validateCurrentStep = (): boolean => {
+    const result = getStepValidation(currentStep);
     setStepErrors(result.errors);
     return result.isValid;
   };
@@ -326,8 +324,15 @@ export default function PartnerWizard() {
   };
 
   const handleNext = () => {
-    if (!validateCurrentStep()) {
-      showToast("Please complete the required fields in this step.");
+    const valResult = getStepValidation(currentStep);
+    if (!valResult.isValid) {
+      setStepErrors(valResult.errors);
+      setIncompleteModalData({
+        step: currentStep,
+        errors: valResult.errors,
+        targetStep: currentStep + 1,
+      });
+      setShowIncompleteModal(true);
       return;
     }
 
@@ -336,6 +341,20 @@ export default function PartnerWizard() {
     setMaxStepVisited((prev) => Math.max(prev, next));
     setStepErrors({});
     scrollToTop();
+  };
+
+  const handleModalSaveAndProceed = async () => {
+    await handleSaveDraft();
+    if (incompleteModalData) {
+      const next = incompleteModalData.targetStep;
+      setCurrentStep(next);
+      setMaxStepVisited((prev) => Math.max(prev, next));
+      setStepErrors({});
+      setShowIncompleteModal(false);
+      setIncompleteModalData(null);
+      scrollToTop();
+      showToast("Draft saved. Remember to complete all required fields before final submission.");
+    }
   };
 
   const handleBack = () => {
@@ -347,11 +366,32 @@ export default function PartnerWizard() {
   };
 
   const handleStepJump = (step: number) => {
-    if (step <= maxStepVisited || step === 10) {
-      setCurrentStep(step);
-      setStepErrors({});
-      scrollToTop();
+    if (currentStep === 10 && step < 10) {
+      setCameFromReview(true);
+    } else if (step === 10) {
+      setCameFromReview(false);
     }
+
+    // Auto-save current progress locally so user doesn't lose data
+    try {
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formData));
+    } catch {
+      // Ignored
+    }
+
+    setCurrentStep(step);
+    setMaxStepVisited((prev) => Math.max(prev, step));
+    setStepErrors({});
+    scrollToTop();
+  };
+
+  const handleSaveAndReturnToReview = async () => {
+    await handleSaveDraft();
+    setCurrentStep(10);
+    setCameFromReview(false);
+    setStepErrors({});
+    scrollToTop();
+    showToast("Saved updates! Returned to Step 10 Review.");
   };
 
   const handleSaveDraft = async () => {
@@ -503,14 +543,12 @@ export default function PartnerWizard() {
             {STEP_DEFINITIONS.map((step) => {
               const isCurrent = currentStep === step.number;
               const isCompleted = step.number < currentStep;
-              const isClickable = step.number <= maxStepVisited || step.number === 10;
               const IconComp = step.icon;
 
               return (
                 <button
                   key={step.number}
                   type="button"
-                  disabled={!isClickable}
                   onClick={() => handleStepJump(step.number)}
                   className={`step-item ${isCurrent ? "is-current" : ""} ${
                     isCompleted ? "is-completed" : ""
@@ -529,6 +567,23 @@ export default function PartnerWizard() {
 
         {/* Form Panel */}
         <div className="partner-form-card">
+          {cameFromReview && currentStep < 10 && (
+            <div className="review-return-banner">
+              <div className="review-return-banner__info">
+                <span className="review-return-banner__tag">Review Mode</span>
+                <span>
+                  Editing <strong>Step {currentStep}: {STEP_DEFINITIONS[currentStep - 1]?.label}</strong> from Review section.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleSaveAndReturnToReview}
+                className="btn-return-to-review"
+              >
+                <Save size={14} /> Save & Return to Review (Step 10) ➔
+              </button>
+            </div>
+          )}
           {currentStep === 1 && (
             <Step1BusinessInfo
               data={formData}
@@ -612,7 +667,7 @@ export default function PartnerWizard() {
 
           {/* Wizard Bottom Controls */}
           <div className="wizard-controls">
-            <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
               {currentStep > 1 && (
                 <button
                   type="button"
@@ -623,9 +678,20 @@ export default function PartnerWizard() {
                   <ChevronLeft size={16} /> Back
                 </button>
               )}
+
+              {cameFromReview && currentStep < 10 && (
+                <button
+                  type="button"
+                  onClick={handleSaveAndReturnToReview}
+                  className="btn-return-to-review"
+                  disabled={isSubmitting}
+                >
+                  <Save size={14} /> Save & Return to Review (Step 10)
+                </button>
+              )}
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
               <button
                 type="button"
                 onClick={handleSaveDraft}
@@ -682,6 +748,85 @@ export default function PartnerWizard() {
           .
         </div>
       </div>
+
+      {/* Incomplete Required Fields Warning Modal */}
+      {showIncompleteModal && incompleteModalData && (
+        <div
+          className="incomplete-modal-backdrop"
+          onClick={() => setShowIncompleteModal(false)}
+        >
+          <div
+            className="incomplete-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="incomplete-modal-title"
+          >
+            <div className="incomplete-modal__header">
+              <div className="incomplete-modal__icon">
+                <AlertCircle size={22} color="#ef5350" />
+              </div>
+              <div>
+                <h3 className="incomplete-modal__title" id="incomplete-modal-title">
+                  Incomplete Required Fields
+                </h3>
+                <p className="incomplete-modal__sub">
+                  Step {incompleteModalData.step}: {STEP_DEFINITIONS[incompleteModalData.step - 1]?.label}
+                </p>
+              </div>
+            </div>
+
+            <div className="incomplete-modal__caution-box">
+              <p>
+                Required fields on this page are incomplete, save before proceeding.
+              </p>
+              <span className="caution-strong">
+                Caution: Form will not be submitted unless all required fields are filled.
+              </span>
+            </div>
+
+            <div className="incomplete-modal__missing-section">
+              <span className="incomplete-modal__missing-label">
+                Required items remaining on this page ({Object.keys(incompleteModalData.errors).length}):
+              </span>
+              <ul className="incomplete-modal__missing-list">
+                {Object.entries(incompleteModalData.errors).slice(0, 6).map(([key, msg]) => (
+                  <li key={key}>
+                    <span className="dot">•</span>
+                    <span>{msg}</span>
+                  </li>
+                ))}
+                {Object.keys(incompleteModalData.errors).length > 6 && (
+                  <li style={{ color: "rgba(245, 241, 232, 0.5)", fontStyle: "italic" }}>
+                    + {Object.keys(incompleteModalData.errors).length - 6} more required field(s)
+                  </li>
+                )}
+              </ul>
+            </div>
+
+            <div className="incomplete-modal__actions">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowIncompleteModal(false);
+                  setStepErrors(incompleteModalData.errors);
+                }}
+                className="btn-secondary"
+              >
+                Stay on this Page
+              </button>
+
+              <button
+                type="button"
+                onClick={handleModalSaveAndProceed}
+                className="btn-primary"
+              >
+                <Save size={15} /> Save Draft & Proceed <ChevronRight size={15} />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

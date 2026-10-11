@@ -68,6 +68,7 @@ export default function Step3Documents({ data, errors, onChange }: Step3Props) {
         fileName: resData.file.fileName,
         fileSize: resData.file.fileSize,
         fileUrl: resData.file.fileUrl,
+        storagePath: resData.file.storagePath || resData.file.fileUrl,
         mimeType: resData.file.mimeType,
         verificationStatus: "pending",
       });

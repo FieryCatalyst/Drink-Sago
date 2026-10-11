@@ -290,7 +290,7 @@ export default function SagoSlotMachine() {
             bottle_discount: outcome.tierInfo.bottleDiscount,
             shot_discount: outcome.tierInfo.shotDiscount,
             eligible_product: "SAGO Bottles & Signature Pours",
-            expires_at: "Valid for 24 hours at selected venue",
+            expires_at: "VALID UNTIL PROMOTIONS LAST",
             notes: outcome.tierInfo.notes,
           },
           is_demo: true,
@@ -332,7 +332,7 @@ export default function SagoSlotMachine() {
 
         const tier = serverResult.tier ?? serverResult.coupon?.tier;
         if (tier === "HIGH") {
-          setMessage(`★ PREMIUM JACKPOT! Triple ${s1}. The highest honor of the wild! ★`);
+          setMessage(`★ PREMIUM SAGO-POT! Triple ${s1}. The highest honor of the wild! ★`);
         } else if (tier === "MID+") {
           setMessage(`NEAR-JACKPOT! Strong fortune aligned with ${s1}.`);
         } else if (tier === "MID") {
@@ -504,11 +504,11 @@ export default function SagoSlotMachine() {
                     ))}
                   </div>
 
-                  {/* Central JACKPOT Illuminated Marquee Sign */}
+                  {/* Central SAGO-POT Illuminated Marquee Sign */}
                   <div className="slot-marquee__signboard">
                     <div className="slot-marquee__sign-bezel">
                       <div className="slot-marquee__sign-core">
-                        <span className="slot-marquee__jackpot-text" id="slot-game-title">JACKPOT</span>
+                        <span className="slot-marquee__jackpot-text" id="slot-game-title">SAGO-POT</span>
                         <span className="slot-marquee__sub-text">✦ SAGO WILD SPIRITS ✦</span>
                       </div>
                     </div>
@@ -627,7 +627,7 @@ export default function SagoSlotMachine() {
                         {isSpinning
                           ? "SPINNING"
                           : result?.tier === "HIGH"
-                          ? "777 JACKPOT!"
+                          ? "777 SAGO-POT!"
                           : result
                           ? "WINNER!"
                           : "WIN"}
@@ -787,7 +787,7 @@ export default function SagoSlotMachine() {
                 </span>
                 <span>
                   Terms
-                  <strong>{result.coupon.expires_at ?? "Valid for 24 hours"}</strong>
+                  <strong>{result.coupon.expires_at ?? "VALID UNTIL PROMOTIONS LAST"}</strong>
                 </span>
               </div>
 
@@ -801,20 +801,14 @@ export default function SagoSlotMachine() {
                     height={130}
                     unoptimized
                   />
-                  <span className="slot-result__qr-caption">Scan at venue bar</span>
                 </div>
               ) : (
                 <div className="slot-result__qr-box">
                   <div className="slot-result__qr-mock" aria-hidden="true">
                     <span>✦ SCAN PASS ✦</span>
                   </div>
-                  <span className="slot-result__qr-caption">Show code to bartender</span>
                 </div>
               )}
-
-              <p className="slot-result__product">
-                {result.coupon.eligible_product ?? "Eligible across all SAGO pours & bottles"}
-              </p>
 
               <button
                 type="button"
@@ -831,10 +825,6 @@ export default function SagoSlotMachine() {
           </div>
         </div>
       )}
-
-      <div className="slot-game__footer">
-        <span>Five spirits · One bold moment</span>
-      </div>
     </section>
   );
 }

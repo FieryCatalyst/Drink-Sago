@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { verifyAdminRequest } from "@/lib/admin-auth";
+import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { hasSupabaseServerEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +22,7 @@ export async function GET(
     }
 
     const { filename } = await context.params;
-    
+
     // Validate filename to prevent path traversal
     if (!filename || filename.includes("..") || filename.includes("/") || filename.includes("\\")) {
       return NextResponse.json(
@@ -29,46 +31,89 @@ export async function GET(
       );
     }
 
+    // 1. Fetch from Supabase partner_documents first
+    if (hasSupabaseServerEnv()) {
+      try {
+        const supabase = getSupabaseAdmin();
+        const { data: docRecord } = await supabase
+          .from("partner_documents")
+          .select("*")
+          .or(`file_name.eq.${filename},id.eq.${filename}`)
+          .limit(1)
+          .maybeSingle();
+
+        if (docRecord?.storage_path) {
+          // If stored as Data URI in Supabase DB
+          if (docRecord.storage_path.startsWith("data:")) {
+            const matches = docRecord.storage_path.match(/^data:([^;]+);base64,(.+)$/);
+            if (matches) {
+              const contentType = matches[1] || docRecord.mime_type || "application/octet-stream";
+              const fileBuffer = Buffer.from(matches[2], "base64");
+
+              return new NextResponse(fileBuffer, {
+                headers: {
+                  "Content-Type": contentType,
+                  "Content-Length": fileBuffer.length.toString(),
+                  "Content-Disposition": `inline; filename="${docRecord.file_name || filename}"`,
+                  "Cache-Control": "private, max-age=3600",
+                  "X-Content-Type-Options": "nosniff",
+                },
+              });
+            }
+          }
+
+          // If stored in Supabase Storage bucket
+          const { data: storageFile, error: storageErr } = await supabase.storage
+            .from("partner-documents")
+            .download(docRecord.storage_path);
+
+          if (!storageErr && storageFile) {
+            const arrayBuf = await storageFile.arrayBuffer();
+            const fileBuffer = Buffer.from(arrayBuf);
+            return new NextResponse(fileBuffer, {
+              headers: {
+                "Content-Type": docRecord.mime_type || "application/octet-stream",
+                "Content-Length": fileBuffer.length.toString(),
+                "Content-Disposition": `inline; filename="${docRecord.file_name || filename}"`,
+                "Cache-Control": "private, max-age=3600",
+                "X-Content-Type-Options": "nosniff",
+              },
+            });
+          }
+        }
+      } catch (sbErr) {
+        console.warn("[Download API] Supabase retrieval warning:", sbErr);
+      }
+    }
+
+    // 2. Legacy fallback if file exists on disk
     const filePath = path.join(process.cwd(), ".data", "uploads", "partner-docs", filename);
-    
-    if (!fs.existsSync(filePath)) {
-      return NextResponse.json(
-        { error: "File not found." },
-        { status: 404 }
-      );
+    if (fs.existsSync(filePath)) {
+      const stat = fs.statSync(filePath);
+      const fileBuffer = fs.readFileSync(filePath);
+
+      const ext = path.extname(filename).toLowerCase();
+      let contentType = "application/octet-stream";
+      if (ext === ".pdf") contentType = "application/pdf";
+      else if (ext === ".jpg" || ext === ".jpeg") contentType = "image/jpeg";
+      else if (ext === ".png") contentType = "image/png";
+      else if (ext === ".webp") contentType = "image/webp";
+
+      return new NextResponse(fileBuffer, {
+        headers: {
+          "Content-Type": contentType,
+          "Content-Length": stat.size.toString(),
+          "Content-Disposition": `inline; filename="${filename}"`,
+          "Cache-Control": "private, max-age=3600",
+          "X-Content-Type-Options": "nosniff",
+        },
+      });
     }
 
-    const stat = fs.statSync(filePath);
-    const fileBuffer = fs.readFileSync(filePath);
-
-    // Determine content type from file extension
-    const ext = path.extname(filename).toLowerCase();
-    let contentType = "application/octet-stream";
-    switch (ext) {
-      case ".pdf":
-        contentType = "application/pdf";
-        break;
-      case ".jpg":
-      case ".jpeg":
-        contentType = "image/jpeg";
-        break;
-      case ".png":
-        contentType = "image/png";
-        break;
-      case ".webp":
-        contentType = "image/webp";
-        break;
-    }
-
-    return new NextResponse(fileBuffer, {
-      headers: {
-        "Content-Type": contentType,
-        "Content-Length": stat.size.toString(),
-        "Content-Disposition": `inline; filename="${filename}"`,
-        "Cache-Control": "private, max-age=3600",
-        "X-Content-Type-Options": "nosniff",
-      },
-    });
+    return NextResponse.json(
+      { error: "File not found in Supabase database." },
+      { status: 404 }
+    );
   } catch (err: unknown) {
     console.error("[Partner Download API] Error:", err);
     return NextResponse.json(

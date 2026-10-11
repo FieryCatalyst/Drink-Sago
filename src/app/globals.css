@@ -2397,7 +2397,7 @@ h1 em, h2 em, h3 em, .display em { color: var(--brass); font-style: normal; }
   font-family: var(--font-display), "Impact", sans-serif;
   font-size: clamp(2rem, 5vw, 3.2rem);
   font-weight: 900;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   line-height: 0.9;
   margin: 0;
   text-shadow:
@@ -2407,6 +2407,7 @@ h1 em, h2 em, h3 em, .display em { color: var(--brass); font-style: normal; }
     0 0 35px #e64a19,
     0 3px 0 #5f2405;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .slot-marquee__sub-text {
@@ -3363,13 +3364,13 @@ h1 em, h2 em, h3 em, .display em { color: var(--brass); font-style: normal; }
 }
 
 .slot-result__qr-box {
-  margin: 1.4rem auto 0.6rem;
+  margin: 1.2rem auto 1.4rem;
   text-align: center;
 }
 
 .slot-result__qr {
   display: block;
-  margin: 0 auto 0.4rem;
+  margin: 0 auto;
   mix-blend-mode: multiply;
 }
 
@@ -3380,7 +3381,7 @@ h1 em, h2 em, h3 em, .display em { color: var(--brass); font-style: normal; }
   display: flex;
   height: 120px;
   justify-content: center;
-  margin: 0 auto 0.4rem;
+  margin: 0 auto;
   width: 120px;
 }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
+import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { hasSupabaseServerEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +17,10 @@ const MAGIC_BYTES: Record<string, number[][]> = {
   "application/pdf": [[0x25, 0x50, 0x44, 0x46]], // %PDF
   "image/jpeg": [[0xff, 0xd8, 0xff]], // JPEG
   "image/png": [[0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]], // PNG
-  // WebP: RIFF at offset 0, WEBP at offset 8 (chunk size at 4-7 can be any value)
-  "image/webp": [[0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50]], // RIFF....WEBP (legacy)
 };
 
 function detectMimeType(buffer: Buffer): string | null {
-  // Check WebP separately since chunk size can vary
+  // Check WebP separately
   if (buffer.length >= 12) {
     const riff = buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46; // RIFF
     const webp = buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50; // WEBP
@@ -32,7 +30,6 @@ function detectMimeType(buffer: Buffer): string | null {
   }
 
   for (const [mime, signatures] of Object.entries(MAGIC_BYTES)) {
-    if (mime === "image/webp") continue; // Already checked above
     for (const sig of signatures) {
       if (buffer.length >= sig.length && sig.every((byte, i) => buffer[i] === byte)) {
         return mime;
@@ -80,7 +77,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Also verify client-provided type matches detected type
+    // Also verify client-provided type matches detected type if provided
     if (file.type && file.type !== detectedMime) {
       return NextResponse.json(
         {
@@ -91,21 +88,43 @@ export async function POST(request: Request) {
       );
     }
 
-    // Save to server-side private upload directory (outside public/)
-    const uploadDir = path.join(process.cwd(), ".data", "uploads", "partner-docs");
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-
     const safeBaseName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const uniqueId = crypto.randomUUID().substring(0, 8);
     const storedFileName = `${Date.now()}_${uniqueId}_${safeBaseName}`;
-    const filePath = path.join(uploadDir, storedFileName);
 
-    fs.writeFileSync(filePath, buffer);
+    let fileUrl = "";
+    let storagePath = "";
 
-    // Return a download route URL instead of direct file path
-    const fileUrl = `/api/partners/download/${storedFileName}`;
+    // Store in Supabase: attempt Supabase Storage bucket first, fallback to Supabase Base64 data URI
+    if (hasSupabaseServerEnv()) {
+      try {
+        const supabase = getSupabaseAdmin();
+        const bucketPath = `partner-docs/${storedFileName}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("partner-documents")
+          .upload(bucketPath, buffer, {
+            contentType: detectedMime,
+            upsert: true,
+          });
+
+        if (!uploadError && uploadData) {
+          const { data: publicUrlData } = supabase.storage
+            .from("partner-documents")
+            .getPublicUrl(bucketPath);
+          fileUrl = publicUrlData.publicUrl;
+          storagePath = bucketPath;
+        }
+      } catch (storageErr) {
+        console.warn("[Upload API] Supabase storage upload warning:", storageErr);
+      }
+    }
+
+    // If storage bucket was not configured or not accessible, store as secure Base64 Data URI in Supabase DB
+    if (!fileUrl) {
+      const dataUri = `data:${detectedMime};base64,${buffer.toString("base64")}`;
+      fileUrl = dataUri;
+      storagePath = dataUri;
+    }
 
     return NextResponse.json({
       success: true,
@@ -114,6 +133,7 @@ export async function POST(request: Request) {
         fileSize: file.size,
         mimeType: detectedMime,
         fileUrl,
+        storagePath,
         documentType: docType || "Compliance Document",
       },
     });
