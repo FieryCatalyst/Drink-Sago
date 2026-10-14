@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, createHash, scryptSync, timingSafeEqual } from "crypto";
 import { GameCoupon } from "../game/game-storage";
 import { hasSupabaseServerEnv } from "../env";
 import { getSupabaseAdmin } from "../supabase/server";
@@ -187,20 +187,50 @@ export const PRESEEDED_BARS: BarRecord[] = [
 ];
 
 export function hashPassword(password: string, salt: string): string {
-  return createHash("sha256").update(`${password}:${salt}`).digest("hex");
+  return scryptSync(password, salt, 32).toString("hex");
+}
+
+export function verifyPassword(password: string, salt: string, passwordHash: string): boolean {
+  // Legacy salt used for SHA-256 hashes
+  const LEGACY_SALT = "sago-salt-2026";
+
+  // Check if this is a legacy SHA-256 hash (using the old static salt)
+  if (salt === LEGACY_SALT) {
+    const legacyHash = createHash("sha256").update(`${password}:${salt}`).digest("hex");
+    const legacyHashBuf = Buffer.from(legacyHash, "hex");
+    const storedHashBuf = Buffer.from(passwordHash, "hex");
+    if (legacyHashBuf.length !== storedHashBuf.length) {
+      return false;
+    }
+    return timingSafeEqual(legacyHashBuf, storedHashBuf);
+  }
+
+  // New scrypt-based verification
+  const computedHash = scryptSync(password, salt, 32).toString("hex");
+  const computedHashBuf = Buffer.from(computedHash, "hex");
+  const storedHashBuf = Buffer.from(passwordHash, "hex");
+  if (computedHashBuf.length !== storedHashBuf.length) {
+    return false;
+  }
+  return timingSafeEqual(computedHashBuf, storedHashBuf);
+}
+
+function generateSalt(): string {
+  return randomBytes(16).toString("hex");
 }
 
 function createPreseededStaff(): BarStaffRecord[] {
   const staffConfigs = [
-    { email: "social.kitwe@drinksago.com", barId: "bar-zm-kitwe-social", name: "Social Kitwe Lead Bartender" },
-    { email: "social.munali@drinksago.com", barId: "bar-zm-lusaka-munali", name: "Social Munali Lead Bartender" },
-    { email: "zorgis.kitwe@drinksago.com", barId: "bar-zm-kitwe-zorgis", name: "Zorgi's Head Bartender" },
-    { email: "lusaka.sports@drinksago.com", barId: "bar-zm-lusaka-sports", name: "Lusaka Sports Club Steward" },
+    { email: "social.kitwe@drinksago.com", barId: "bar-zm-kitwe-social", name: "Social Kitwe Lead Bartender", envVar: "STAFF_PASSWORD_SOCIAL_KITWE" },
+    { email: "social.munali@drinksago.com", barId: "bar-zm-lusaka-munali", name: "Social Munali Lead Bartender", envVar: "STAFF_PASSWORD_SOCIAL_MUNALI" },
+    { email: "zorgis.kitwe@drinksago.com", barId: "bar-zm-kitwe-zorgis", name: "Zorgi's Head Bartender", envVar: "STAFF_PASSWORD_ZORGIS_KITWE" },
+    { email: "lusaka.sports@drinksago.com", barId: "bar-zm-lusaka-sports", name: "Lusaka Sports Club Steward", envVar: "STAFF_PASSWORD_LUSAKA_SPORTS" },
   ];
 
   return staffConfigs.map((cfg) => {
-    const salt = "sago-salt-2026";
-    const passwordHash = hashPassword("SagoBar@2026", salt);
+    const salt = generateSalt();
+    const password = process.env[cfg.envVar] || `SagoBar@${Date.now()}-${randomBytes(4).toString("hex")}`;
+    const passwordHash = hashPassword(password, salt);
     return {
       id: `staff-${cfg.barId}`,
       email: cfg.email,
@@ -440,14 +470,18 @@ export async function verifyCoupon(params: {
   }
 
   if (coupon.status === "REDEEMED") {
+    const redeemedDate = coupon.redeemedAt ? new Date(coupon.redeemedAt) : (coupon.expiresAt ? new Date(coupon.expiresAt) : null);
     return {
       isValid: false,
-      error: `Coupon was already redeemed on ${new Date(coupon.expiresAt).toLocaleDateString()}.`,
+      error: redeemedDate
+        ? `Coupon was already redeemed on ${redeemedDate.toLocaleDateString()}.`
+        : "Coupon was already redeemed.",
       couponCode: coupon.code,
       tier: coupon.tier,
       bottleDiscount: coupon.bottleDiscount,
       shotDiscount: coupon.shotDiscount,
       status: "REDEEMED",
+      redeemedAt: coupon.redeemedAt,
     };
   }
 
@@ -626,7 +660,8 @@ export async function redeemCoupon(params: {
     }
 
     const now = new Date();
-    if (coupon.expiresAt && new Date(coupon.expiresAt) < now) {
+    // Reject if status is EXPIRED or if expiresAt is in the past
+    if (coupon.status === "EXPIRED" || (coupon.expiresAt && new Date(coupon.expiresAt) < now)) {
       appendRedemptionLog({
         id: `log-${Date.now()}-${randomBytes(2).toString("hex")}`,
         couponCode: code,
@@ -687,7 +722,74 @@ export async function redeemCoupon(params: {
  * Bar Activity Isolation:
  * Returns ONLY logs and statistics for the requested barId.
  */
-export function getBarRedemptionActivity(barId: string) {
+export async function getBarRedemptionActivity(barId: string) {
+  if (hasSupabaseServerEnv()) {
+    try {
+      const supabase = getSupabaseAdmin();
+      const dbBarId = mapBarIdToUuid(barId);
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayStart = `${todayStr}T00:00:00.000Z`;
+      const todayEnd = `${todayStr}T23:59:59.999Z`;
+
+      // Fetch recent activity (limited to 50)
+      const { data: logsData, error: logsError } = await supabase
+        .from("redemption_logs")
+        .select("*")
+        .eq("bar_id", dbBarId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (logsError) {
+        throw logsError;
+      }
+
+      // Separate count queries for today's totals
+      const { count: todayRedeemed, error: redeemedCountError } = await supabase
+        .from("redemption_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("bar_id", dbBarId)
+        .eq("action", "redeemed")
+        .gte("created_at", todayStart)
+        .lte("created_at", todayEnd);
+      if (redeemedCountError) {
+        throw redeemedCountError;
+      }
+
+      const { count: todayRejected, error: rejectedCountError } = await supabase
+        .from("redemption_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("bar_id", dbBarId)
+        .eq("action", "redemption_rejected")
+        .gte("created_at", todayStart)
+        .lte("created_at", todayEnd);
+      if (rejectedCountError) {
+        throw rejectedCountError;
+      }
+
+      const logs = (logsData || []).map((l) => ({
+        id: l.id,
+        couponCode: l.coupon_code,
+        barId: barId,
+        barName: l.bar_name || "",
+        staffEmail: l.staff_email || "",
+        action: l.action,
+        result: l.result,
+        requestId: l.request_id,
+        discountApplied: l.discount_applied,
+        createdAt: l.created_at,
+      }));
+
+      return {
+        todaySuccessfulCount: todayRedeemed ?? 0,
+        todayRejectedCount: todayRejected ?? 0,
+        recentActivity: logs,
+      };
+    } catch (err) {
+      console.error("[VerifyService] Failed to read activity from Supabase:", err);
+      throw new Error("Activity read failed");
+    }
+  }
+
+  // Fallback to local file storage
   const allLogs = getRedemptionLogs();
   const barLogs = allLogs.filter((l) => l.barId === barId);
 

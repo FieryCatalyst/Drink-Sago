@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getStaffByEmail, getBarById, hashPassword } from "@/lib/verify/verify-service";
+import { getStaffByEmail, getBarById, verifyPassword } from "@/lib/verify/verify-service";
 import { signSessionToken, VERIFY_COOKIE_NAME } from "@/lib/verify/verify-auth";
 
 export async function POST(request: Request) {
@@ -29,8 +29,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const calculatedHash = hashPassword(password, staff.salt);
-    if (calculatedHash !== staff.passwordHash) {
+    if (!verifyPassword(password, staff.salt, staff.passwordHash)) {
       return NextResponse.json(
         { success: false, error: "Invalid credentials. Please check your assigned bar login." },
         { status: 401 }

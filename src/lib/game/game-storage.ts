@@ -50,6 +50,21 @@ const DATA_DIR = path.join(process.cwd(), ".data");
 const SESSIONS_FILE = path.join(DATA_DIR, "game_sessions.json");
 const COUPONS_FILE = path.join(DATA_DIR, "game_coupons.json");
 
+// Per-session lock map to serialize concurrent spin requests per session
+const sessionLocks = new Map<string, Promise<void>>();
+
+function getSessionLock(sessionId: string): Promise<void> {
+  const existingLock = sessionLocks.get(sessionId);
+  if (existingLock) {
+    return existingLock;
+  }
+  const lock = (async () => {})(); // Create a resolved promise as the lock
+  sessionLocks.set(sessionId, lock);
+  // Clean up lock after a short delay to prevent memory leaks
+  setTimeout(() => sessionLocks.delete(sessionId), 5000);
+  return lock;
+}
+
 function ensureDirectoryExists() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -153,6 +168,9 @@ async function writeLocalCoupon(coupon: GameCoupon): Promise<void> {
         code: coupon.code,
         session_id: coupon.sessionId,
         venue_id: coupon.venueId,
+        venue_name: coupon.venueName,
+        venue_address: coupon.venueAddress,
+        venue_city: coupon.venueCity,
         customer_name: coupon.customerName,
         customer_email: coupon.customerEmail,
         tier: coupon.tier,
@@ -275,12 +293,18 @@ export async function recordProductionSpinAndCoupon(params: {
   venueId?: string;
 }): Promise<GameCoupon> {
   const { sessionId, outcome } = params;
-  const sessions = readLocalSessions();
-  const session = sessions.find((s) => s.id === sessionId);
 
-  if (!session) {
+  // Acquire per-session lock to serialize concurrent requests
+  await getSessionLock(sessionId);
+
+  const sessions = readLocalSessions();
+  const sessionIndex = sessions.findIndex((s) => s.id === sessionId);
+
+  if (sessionIndex === -1) {
     throw new Error("Session not found");
   }
+
+  const session = sessions[sessionIndex];
 
   if (session.status !== "ACTIVE") {
     throw new Error("Session is not active");
@@ -296,9 +320,12 @@ export async function recordProductionSpinAndCoupon(params: {
     throw new Error("Session play limit reached");
   }
 
-  session.playCount += 1;
-  session.lastPlayedAt = now.toISOString();
-  writeLocalSessions(sessions);
+  // Prepare updated session but don't persist yet
+  const updatedSession = {
+    ...session,
+    playCount: session.playCount + 1,
+    lastPlayedAt: now.toISOString(),
+  };
 
   const venue = session.venue || findZambiaVenue(session.venueId);
   const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -379,7 +406,16 @@ export async function recordProductionSpinAndCoupon(params: {
     notes: outcome.tierInfo.notes,
   };
 
+  // Persist coupon first, then session atomically
   await writeLocalCoupon(coupon);
+
+  // Now persist the updated session
+  const sessions = readLocalSessions();
+  const sessionIndex = sessions.findIndex((s) => s.id === sessionId);
+  if (sessionIndex !== -1) {
+    sessions[sessionIndex] = updatedSession;
+    writeLocalSessions(sessions);
+  }
 
   return coupon;
 }

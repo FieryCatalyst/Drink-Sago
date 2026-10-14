@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     }
 
     // Bar isolation: only retrieve activity for the authenticated staff's assigned barId
-    const data = getBarRedemptionActivity(auth.bar.id);
+    const data = await getBarRedemptionActivity(auth.bar.id);
 
     return NextResponse.json({
       success: true,

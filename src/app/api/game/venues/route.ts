@@ -13,8 +13,9 @@ const campaignSlug = process.env.SAGO_CAMPAIGN_SLUG;
         name: "SAGO Big 5 Zambia Tour",
         slug: "sago-wild-card",
       },
-      venues: SAGO_ZAMBIA_VENUES,
+      venues: [],
       is_demo: true,
+      error: "No campaign configured",
     });
   }
 
@@ -50,6 +51,7 @@ const campaignSlug = process.env.SAGO_CAMPAIGN_SLUG;
         campaign: { id: campaign.id, name: campaign.name, slug: campaign.slug },
         venues: [],
         is_demo: false,
+        error: "No venues configured for this campaign",
       });
     }
 
@@ -59,15 +61,16 @@ const campaignSlug = process.env.SAGO_CAMPAIGN_SLUG;
       is_demo: false,
     });
   } catch (error) {
-    console.warn("Unable to load campaign venues from database, serving production Zambia venues:", error);
+    console.warn("Unable to load campaign venues from database:", error);
     return NextResponse.json({
       campaign: {
         id: "sago-wild-card-zambia",
         name: "SAGO Big 5 Zambia Tour",
         slug: "sago-wild-card",
       },
-      venues: SAGO_ZAMBIA_VENUES,
+      venues: [],
       is_demo: true,
+      error: "Unable to load venues",
     });
   }
 }

@@ -207,7 +207,7 @@ export default function SagoSlotMachine() {
     fetch("/api/game/venues")
       .then(async (response) => {
         if (!response.ok) return;
-        const data = (await response.json()) as { venues?: Venue[] };
+        const data = (await response.json()) as { venues?: Venue[]; error?: string };
         if (data.venues && data.venues.length > 0) {
           const apiVenues = data.venues;
           setVenues(apiVenues);
@@ -219,6 +219,11 @@ export default function SagoSlotMachine() {
             setSelectedVenueName(`${chosenVenue.name} · ${chosenVenue.city}`);
             return chosenVenue.id;
           });
+        } else {
+          // Empty venues array from server - clear venues and disable registration
+          setVenues([]);
+          setVenueId("");
+          setSelectedVenueName("No venues available");
         }
       })
       .catch(() => {
@@ -249,15 +254,16 @@ export default function SagoSlotMachine() {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed?.session_id && parsed?.name && parsed?.email) {
+          // Persist venue change to server session
           const response = await fetch("/api/game/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               email: parsed.email,
               marketing_consent: parsed.marketing_consent ?? false,
               name: parsed.name,
               venue_id: id,
             }),
-            headers: { "Content-Type": "application/json" },
-            method: "POST",
           });
 
           if (response.ok) {
@@ -272,7 +278,7 @@ export default function SagoSlotMachine() {
                 JSON.stringify({
                   session_id: session.session_id,
                   venue_id: id,
-                  venue_name: venueLabel,
+                  venue_name: session.venue ? `${session.venue.name} · ${session.venue.city}` : venueLabel,
                   country,
                   name: parsed.name,
                   email: parsed.email,
@@ -280,8 +286,14 @@ export default function SagoSlotMachine() {
                 })
               );
             }
+          } else {
+            // Fallback to local storage update if server request fails
+            parsed.venue_id = id;
+            parsed.venue_name = venueLabel;
+            localStorage.setItem("sago_game_session", JSON.stringify(parsed));
           }
         } else {
+          // No valid session, just update local storage
           parsed.venue_id = id;
           parsed.venue_name = venueLabel;
           localStorage.setItem("sago_game_session", JSON.stringify(parsed));
@@ -336,6 +348,7 @@ export default function SagoSlotMachine() {
               country,
               name,
               email,
+              marketing_consent: marketingConsent,
             })
           );
         } catch {
@@ -369,39 +382,14 @@ export default function SagoSlotMachine() {
         method: "POST",
       });
 
-      let serverResult: SpinResult;
-      if (response.ok) {
-        serverResult = (await response.json()) as SpinResult;
-      } else {
-        // Fallback drawing strictly from the SAGO reward hierarchy
-        const outcome = drawOutcomeFromHierarchy();
-        const code = generateCouponCode();
-        serverResult = {
-          result_1: outcome.combo[0],
-          result_2: outcome.combo[1],
-          result_3: outcome.combo[2],
-          tier: outcome.tierInfo.tier,
-          bottle_discount: outcome.tierInfo.bottleDiscount,
-          shot_discount: outcome.tierInfo.shotDiscount,
-          pattern_class: outcome.patternClass,
-          coupon: {
-            code,
-            tier: outcome.tierInfo.tier,
-            reward:
-              outcome.tierInfo.tier === "HIGH"
-                ? `PREMIUM JACKPOT · ${outcome.tierInfo.bottleDiscount}% OFF BOTTLE / ${outcome.tierInfo.shotDiscount}% OFF POUR`
-                : `${outcome.tierInfo.rewardReveal.toUpperCase()} · ${outcome.tierInfo.bottleDiscount}% OFF BOTTLE / ${outcome.tierInfo.shotDiscount}% OFF POUR`,
-            bottle_discount: outcome.tierInfo.bottleDiscount,
-            shot_discount: outcome.tierInfo.shotDiscount,
-            eligible_product: "SAGO Bottles & Signature Pours",
-            expires_at: `Valid for 30 days at ${selectedVenueName.split("·")[0].trim()}`,
-            venue_name: selectedVenueName.split("·")[0].trim(),
-            venue_city: selectedVenueName.split("·")[1]?.trim() || "Zambia",
-            notes: outcome.tierInfo.notes,
-          },
-          is_demo: false,
-        };
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Spin failed" }));
+        setMessage(`Spin failed: ${errorData.error || "Server error"}`);
+        setIsSpinning(false);
+        return;
       }
+
+      const serverResult = (await response.json()) as SpinResult;
 
       const s1 = serverResult.result_1 || "Lion";
       const s2 = serverResult.result_2 || "Leopard";

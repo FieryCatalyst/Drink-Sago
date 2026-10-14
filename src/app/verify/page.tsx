@@ -255,11 +255,6 @@ export default function VerificationPortalPage() {
     }
   }, [stopCamera]);
 
-  // Keep handleVerifyCodeRef synchronized with handleVerifyCode
-  useEffect(() => {
-    handleVerifyCodeRef.current = handleVerifyCode;
-  }, [handleVerifyCode]);
-
   // Trigger camera start when switching to scan tab
   useEffect(() => {
     if (staff && activeTab === "scan" && !verificationResult && !redemptionReceipt) {
@@ -351,6 +346,11 @@ export default function VerificationPortalPage() {
       loadBarActivity();
     }
   };
+
+  // Keep handleVerifyCodeRef synchronized with handleVerifyCode
+  useEffect(() => {
+    handleVerifyCodeRef.current = handleVerifyCode;
+  }, [handleVerifyCode]);
 
   // Handle Redemption Confirmation (Atomic Step 4)
   const handleConfirmRedeem = async () => {

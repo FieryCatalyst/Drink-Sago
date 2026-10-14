@@ -192,7 +192,12 @@ export async function POST(request: Request) {
           }
         }
       } catch (err) {
-        console.warn("[SpinAPI] Supabase spin execution deferred to production local store:", err);
+        console.error("[SpinAPI] Supabase spin execution failed:", err);
+        // Session was found in Supabase - return 500 instead of falling through to local store
+        return NextResponse.json(
+          { error: err instanceof Error ? err.message : "Spin processing failed" },
+          { status: 500 }
+        );
       }
     }
 
