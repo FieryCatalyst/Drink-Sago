@@ -4,12 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Clock3 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import SiteNav from "@/components/site-nav";
 import SiteFooter from "@/components/site-footer";
-import EditorialCocktailCarousel from "@/components/editorial-cocktail-carousel";
 
 type Cocktail = {
+  id: string;
   name: string;
   category: string;
   product: string;
@@ -29,52 +30,69 @@ type Cocktail = {
 };
 
 const recipes: Cocktail[] = [
-  { name: "The Sago Highball", category: "Oak whisky", product: "Sago Oak Whisky", time: "5 min", difficulty: "★☆☆☆☆", glass: "Highball", ice: "Long clear spear", image: "/assets/cocktail-highball.png", ingredients: ["50 ml Sago Oak Whisky", "100 ml soda water", "10 ml fresh lemon juice", "5 ml honey syrup", "2 dashes orange bitters", "Large ice", "Lemon peel"], equipment: ["Highball glass", "Bar spoon", "Jigger"], method: ["Fill a highball glass completely with ice.", "Add Sago Oak Whisky, lemon juice, honey syrup and bitters.", "Stir gently.", "Top with soda.", "Give it one gentle lift from the bottom with a bar spoon."], garnish: "Express a lemon peel over the drink and drop it in.", profile: "Light honey sweetness, lemon, orange aromatics, vanilla, clean oak.", style: "Bright, refreshing & effervescent", occasion: "Long afternoons and easy first rounds." },
-  { name: "Sago-Blood Sour", category: "Oak whisky", product: "Sago Oak Whisky", time: "8 min", difficulty: "★★☆☆☆", glass: "Coupe", ice: "No ice", image: "/assets/sago-blood-sour.png", ingredients: ["50 ml Sago Oak Whisky", "25 ml fresh lemon juice", "15 ml hibiscus-honey syrup", "15 ml egg white", "2 dashes Angostura bitters", "Ice"], prep: ["Combine 100 g honey, 100 ml water and 2–3 g dried hibiscus.", "Steep, then strain to make the hibiscus-honey syrup."], equipment: ["Shaker", "Fine strainer", "Coupe"], method: ["Add everything to a shaker without ice.", "Shake vigorously for 10–15 seconds.", "Add ice and shake again.", "Double strain into a chilled coupe."], garnish: "Finish with 2–3 drops of Angostura bitters on the foam.", profile: "Tart hibiscus, lemon, honey, floral berry notes, bitters.", style: "Silky, tart & elegant", occasion: "A slow beginning to a long evening." },
-  { name: "Sago Gold Rush", category: "Oak whisky", product: "Sago Oak Whisky", time: "7 min", difficulty: "★★★☆☆", glass: "Double Old Fashioned", ice: "One large clear cube", image: "/assets/cocktail.png", ingredients: ["50 ml Sago Oak Whisky", "25 ml fresh pineapple juice", "20 ml rooibos-ginger syrup", "15 ml fresh lime juice", "2 dashes orange bitters", "2 drops saline solution", "Ice"], prep: ["Combine 100 ml strongly brewed rooibos tea, 100 g demerara sugar, 10 g fresh ginger and 1 strip orange peel.", "Simmer gently for 5 minutes, then strain to make the rooibos-ginger syrup."], equipment: ["Shaker", "Double strainer", "Rocks glass"], method: ["Add all ingredients to a shaker.", "Shake hard with ice.", "Double strain into a chilled rocks glass over one large cube."], garnish: "Thin dehydrated pineapple slice or orange peel.", profile: "Tropical pineapple, earthy rooibos, fresh ginger, lime, caramel sweetness.", style: "Tropical, earthy & adventurous", occasion: "A dinner opener with somewhere to go." },
-  { name: "Sago After Dark", category: "Oak whisky", product: "Sago Oak Whisky", time: "6 min", difficulty: "★★★☆☆", glass: "Nick & Nora", ice: "No ice", image: "/assets/sago-after-dark.png", ingredients: ["50 ml Sago Oak Whisky", "15 ml sweet vermouth", "10 ml coffee liqueur", "5 ml banana liqueur", "2 dashes chocolate bitters", "1 dash orange bitters"], equipment: ["Mixing glass", "Bar spoon", "Nick & Nora"], method: ["Add all ingredients to a mixing glass.", "Fill with ice.", "Stir for approximately 20–25 seconds.", "Strain into a chilled Nick & Nora."], garnish: "Express orange over the drink and discard the peel. The banana liqueur adds a creamy, caramelised fruit character.", profile: "Dark coffee, caramelised banana, bittersweet chocolate, vermouth, orange oils.", style: "Rich, dark & sophisticated", occasion: "After dinner, when the lights get lower." },
-  { name: "Sago’s Ruby Jewel", category: "Oak whisky", product: "Sago Original Whisky", time: "6 min", difficulty: "★★☆☆☆", glass: "Highball", ice: "Cubed ice", image: "/assets/SAGO RUBY JWEL solid clr.png", ingredients: ["50 ml Sago Original Whisky", "30 ml raspberry juice or raspberry purée", "15 ml fresh lemon juice", "10 ml honey syrup", "50 ml soda water", "Ice"], equipment: ["Shaker", "Strainer", "Tall glass"], method: ["Add Sago whisky, raspberry, lemon and honey to a shaker.", "Shake with ice.", "Strain into a tall glass over fresh ice.", "Top with soda."], garnish: "2–3 fresh raspberries.", profile: "Tart raspberry, lemon, honey, vanilla, gentle oak.", style: "Fruity, vibrant & refreshing", occasion: "Celebrations that call for colour." },
-  { name: "Apple of Sago’s Eye", category: "Cinnamon whisky", product: "Sago Cinnamon Whisky", time: "7 min", difficulty: "★☆☆☆☆", glass: "Rocks", ice: "One large clear cube", image: "/assets/cocktail4.png", ingredients: ["50 ml Sago Cinnamon Whisky", "60 ml cloudy apple juice", "15 ml fresh lemon juice", "10 ml honey syrup", "2 dashes Angostura bitters", "Ice"], equipment: ["Shaker", "Strainer", "Rocks glass"], method: ["Add everything to a shaker.", "Shake hard with ice.", "Strain over fresh ice in a rocks glass."], garnish: "Thin apple slice and a small cinnamon stick. Briefly toast the cinnamon stick before placing it across the rim.", profile: "Ripe apple, cinnamon, honey, citrus, bitters.", style: "Fruity, warming & approachable", occasion: "A relaxed evening by the fire." },
-  { name: "Silky Sago Route", category: "Cinnamon whisky", product: "Sago Cinnamon Whisky", time: "7 min", difficulty: "★★★☆☆", glass: "Coupe", ice: "No ice", image: "/assets/cocktail2.png", ingredients: ["50 ml Sago Cinnamon Whisky", "20 ml cold brew coffee", "15 ml vanilla syrup", "15 ml fresh orange juice", "2 dashes chocolate bitters", "Ice"], equipment: ["Shaker", "Double strainer", "Coupe"], method: ["Add all ingredients to a shaker.", "Shake vigorously with ice.", "Double strain into a chilled coupe.", "Express an orange peel over the drink and discard it."], garnish: "Orange peel.", profile: "Rich coffee, vanilla, orange, cinnamon, subtle chocolate.", style: "Smooth, aromatic & indulgent", occasion: "Late-night conversations and velvet playlists." },
-  { name: "Cheeky-Peachy Sago", category: "Cinnamon whisky", product: "Sago Cinnamon Whisky", time: "6 min", difficulty: "★★☆☆☆", glass: "Highball", ice: "Cubed ice", image: "/assets/Cheeky Peach Sago Solid clrs.png", ingredients: ["50 ml Sago Cinnamon Whisky", "40 ml peach nectar", "15 ml fresh lemon juice", "50 ml soda water", "Ice"], equipment: ["Shaker", "Strainer", "Highball glass"], method: ["Add whisky, peach nectar and lemon to a shaker.", "Shake with ice.", "Strain into a highball filled with ice.", "Top with soda."], garnish: "Thin peach slice.", profile: "Juicy peach, lemon, sweet cinnamon, light carbonation.", style: "Soft, fruity & refreshing", occasion: "Golden hour with friends." },
-  { name: "Sago’s Plum Affair", category: "Cinnamon whisky", product: "Sago Cinnamon Whisky", time: "7 min", difficulty: "★★★☆☆", glass: "Coupe", ice: "No ice", image: "/assets/SAGOS PLUM AFAIR solid clr.png", ingredients: ["50 ml Sago Cinnamon Whisky", "30 ml plum juice", "15 ml fresh lemon juice", "5 ml hot honey", "10 ml honey syrup", "Ice"], equipment: ["Shaker", "Double strainer", "Coupe"], method: ["Add all ingredients to a shaker.", "Shake hard with ice.", "Double strain into a chilled coupe."], garnish: "Thin slice of fresh plum.", profile: "Juicy plum, lemon, honey, cinnamon, subtle heat.", style: "Rich, fruity & warming", occasion: "A special pour for a close table." },
-  { name: "Sago Golden Hour", category: "Hot & comforting", product: "Sago Original Whisky", time: "6 min", difficulty: "★☆☆☆☆", glass: "Heatproof Irish Coffee", ice: "None", image: "/assets/cocktail3.png", ingredients: ["50 ml Sago Original Whisky", "15 ml honey", "15 ml fresh lemon juice", "100 ml hot water", "1 orange peel", "1 cinnamon stick"], equipment: ["Heatproof glass", "Bar spoon", "Kettle"], method: ["Add honey and lemon juice to a heatproof glass.", "Pour in hot water and stir until the honey dissolves.", "Add Sago Whisky.", "Stir gently."], garnish: "Express an orange peel over the drink, then add the peel and cinnamon stick.", profile: "Honey, lemon, orange oils, vanilla, cinnamon aroma.", style: "Warm, comforting & aromatic", occasion: "The nightcap that softens the edges." },
-  { name: "Sago Toddy", category: "Hot & comforting", product: "Sago Cinnamon Whisky", time: "6 min", difficulty: "★☆☆☆☆", glass: "Heatproof Irish Coffee", ice: "None", image: "/assets/SAGO Toddy.png", ingredients: ["50 ml Sago Cinnamon Whisky", "100 ml hot cloudy apple juice", "10 ml fresh lemon juice", "5 ml honey", "1 cinnamon stick", "Apple slice"], equipment: ["Heatproof glass", "Bar spoon", "Small saucepan"], method: ["Warm the apple juice.", "Pour it into a heatproof glass.", "Add honey and lemon.", "Add Sago Cinnamon Whisky.", "Stir gently."], garnish: "Apple slice and cinnamon stick.", profile: "Baked apple, honey, lemon, cinnamon, whisky warmth.", style: "Warm, cozy & fruit-forward", occasion: "A quiet winter gathering." },
-  { name: "Sago x Sago", category: "Mixed whisky", product: "Sago Original + Cinnamon Whisky", time: "5 min", difficulty: "★☆☆☆☆", glass: "Highball", ice: "Long clear spear", image: "/assets/SAGO X SAGO.png", ingredients: ["25 ml Sago Original Whisky", "25 ml Sago Cinnamon Whisky", "100 ml soda water", "10 ml fresh lemon juice", "5 ml honey syrup", "2 dashes orange bitters", "Ice", "Orange peel"], equipment: ["Highball glass", "Bar spoon", "Jigger"], method: ["Fill a highball glass with ice.", "Add both whiskies, lemon juice, honey and bitters.", "Stir briefly.", "Top with soda.", "Stir once gently."], garnish: "Express an orange peel over the top and garnish.", profile: "Honey, vanilla, cinnamon, lemon, orange bitters, oak.", style: "Bright, refreshing & aromatic", occasion: "When one Sago expression is not enough." },
-  { name: "Sago Blackout", category: "Mixed whisky", product: "Sago Original + Cinnamon Whisky", time: "7 min", difficulty: "★★★☆☆", glass: "Nick & Nora", ice: "No ice", image: "/assets/SAGO_BLACKOUT.png", ingredients: ["30 ml Sago Original Whisky", "20 ml Sago Cinnamon Whisky", "20 ml sweet vermouth", "10 ml coffee liqueur", "2 dashes chocolate bitters", "Orange peel", "Ice"], equipment: ["Mixing glass", "Bar spoon", "Nick & Nora"], method: ["Add both whiskies, vermouth, coffee liqueur and bitters to a mixing glass.", "Fill with ice.", "Stir for 20–25 seconds.", "Strain into a chilled coupe or Nick & Nora."], garnish: "Express an orange peel over the surface and discard it.", profile: "Coffee, vermouth, chocolate, vanilla, cinnamon, oak.", style: "Dark, rich & sophisticated", occasion: "The final chapter of the evening." },
+  { id: "sago-highball", name: "The Sago Highball", category: "Oak whisky", product: "Sago Oak Whisky", time: "5 min", difficulty: "★☆☆☆☆", glass: "Highball", ice: "Long clear spear", image: "/assets/cocktail-highball.png", ingredients: ["50 ml Sago Oak Whisky", "100 ml soda water", "10 ml fresh lemon juice", "5 ml honey syrup", "2 dashes orange bitters", "Large ice", "Lemon peel"], equipment: ["Highball glass", "Bar spoon", "Jigger"], method: ["Fill a highball glass completely with ice.", "Add Sago Oak Whisky, lemon juice, honey syrup and bitters.", "Stir gently.", "Top with soda.", "Give it one gentle lift from the bottom with a bar spoon."], garnish: "Express a lemon peel over the drink and drop it in.", profile: "Light honey sweetness, lemon, orange aromatics, vanilla, clean oak.", style: "Bright, refreshing & effervescent", occasion: "Long afternoons and easy first rounds." },
+  { id: "sago-blood-sour", name: "Sago-Blood Sour", category: "Oak whisky", product: "Sago Oak Whisky", time: "8 min", difficulty: "★★☆☆☆", glass: "Coupe", ice: "No ice", image: "/assets/sago-blood-sour.png", ingredients: ["50 ml Sago Oak Whisky", "25 ml fresh lemon juice", "15 ml hibiscus-honey syrup", "15 ml egg white", "2 dashes Angostura bitters", "Ice"], prep: ["Combine 100 g honey, 100 ml water and 2–3 g dried hibiscus.", "Steep, then strain to make the hibiscus-honey syrup."], equipment: ["Shaker", "Fine strainer", "Coupe"], method: ["Add everything to a shaker without ice.", "Shake vigorously for 10–15 seconds.", "Add ice and shake again.", "Double strain into a chilled coupe."], garnish: "Finish with 2–3 drops of Angostura bitters on the foam.", profile: "Tart hibiscus, lemon, honey, floral berry notes, bitters.", style: "Silky, tart & elegant", occasion: "A slow beginning to a long evening." },
+  { id: "sago-gold-rush", name: "Sago Gold Rush", category: "Oak whisky", product: "Sago Oak Whisky", time: "7 min", difficulty: "★★★☆☆", glass: "Double Old Fashioned", ice: "One large clear cube", image: "/assets/Tropical Golden Hour Cocktail Still Life.png", ingredients: ["50 ml Sago Oak Whisky", "25 ml fresh pineapple juice", "20 ml rooibos-ginger syrup", "15 ml fresh lime juice", "2 dashes orange bitters", "2 drops saline solution", "Ice"], prep: ["Combine 100 ml strongly brewed rooibos tea, 100 g demerara sugar, 10 g fresh ginger and 1 strip orange peel.", "Simmer gently for 5 minutes, then strain to make the rooibos-ginger syrup."], equipment: ["Shaker", "Double strainer", "Rocks glass"], method: ["Add all ingredients to a shaker.", "Shake hard with ice.", "Double strain into a chilled rocks glass over one large cube."], garnish: "Thin dehydrated pineapple slice or orange peel.", profile: "Tropical pineapple, earthy rooibos, fresh ginger, lime, caramel sweetness.", style: "Tropical, earthy & adventurous", occasion: "A dinner opener with somewhere to go." },
+  { id: "sago-after-dark", name: "Sago After Dark", category: "Oak whisky", product: "Sago Oak Whisky", time: "6 min", difficulty: "★★★☆☆", glass: "Nick & Nora", ice: "No ice", image: "/assets/sago-after-dark.png", ingredients: ["50 ml Sago Oak Whisky", "15 ml sweet vermouth", "10 ml coffee liqueur", "5 ml banana liqueur", "2 dashes chocolate bitters", "1 dash orange bitters"], equipment: ["Mixing glass", "Bar spoon", "Nick & Nora"], method: ["Add all ingredients to a mixing glass.", "Fill with ice.", "Stir for approximately 20–25 seconds.", "Strain into a chilled Nick & Nora."], garnish: "Express orange over the drink and discard the peel. The banana liqueur adds a creamy, caramelised fruit character.", profile: "Dark coffee, caramelised banana, bittersweet chocolate, vermouth, orange oils.", style: "Rich, dark & sophisticated", occasion: "After dinner, when the lights get lower." },
+  { id: "sagos-ruby-jewel", name: "Sago’s Ruby Jewel", category: "Oak whisky", product: "Sago Original Whisky", time: "6 min", difficulty: "★★☆☆☆", glass: "Highball", ice: "Cubed ice", image: "/assets/SAGO RUBY JWEL solid clr.png", ingredients: ["50 ml Sago Original Whisky", "30 ml raspberry juice or raspberry purée", "15 ml fresh lemon juice", "10 ml honey syrup", "50 ml soda water", "Ice"], equipment: ["Shaker", "Strainer", "Tall glass"], method: ["Add Sago whisky, raspberry, lemon and honey to a shaker.", "Shake with ice.", "Strain into a tall glass over fresh ice.", "Top with soda."], garnish: "2–3 fresh raspberries.", profile: "Tart raspberry, lemon, honey, vanilla, gentle oak.", style: "Fruity, vibrant & refreshing", occasion: "Celebrations that call for colour." },
+  { id: "apple-of-sagos-eye", name: "Apple of Sago’s Eye", category: "Cinnamon whisky", product: "Sago Cinnamon Whisky", time: "7 min", difficulty: "★☆☆☆☆", glass: "Rocks", ice: "One large clear cube", image: "/assets/Candlelit Apple Cinnamon Whisky Cocktail.png", ingredients: ["50 ml Sago Cinnamon Whisky", "60 ml cloudy apple juice", "15 ml fresh lemon juice", "10 ml honey syrup", "2 dashes Angostura bitters", "Ice"], equipment: ["Shaker", "Strainer", "Rocks glass"], method: ["Add everything to a shaker.", "Shake hard with ice.", "Strain over fresh ice in a rocks glass."], garnish: "Thin apple slice and a small cinnamon stick. Briefly toast the cinnamon stick before placing it across the rim.", profile: "Ripe apple, cinnamon, honey, citrus, bitters.", style: "Fruity, warming & approachable", occasion: "A relaxed evening by the fire." },
+  { id: "silky-sago-route", name: "Silky Sago Route", category: "Cinnamon whisky", product: "Sago Cinnamon Whisky", time: "7 min", difficulty: "★★★☆☆", glass: "Coupe", ice: "No ice", image: "/assets/cocktail2.png", ingredients: ["50 ml Sago Cinnamon Whisky", "20 ml cold brew coffee", "15 ml vanilla syrup", "15 ml fresh orange juice", "2 dashes chocolate bitters", "Ice"], equipment: ["Shaker", "Double strainer", "Coupe"], method: ["Add all ingredients to a shaker.", "Shake vigorously with ice.", "Double strain into a chilled coupe.", "Express an orange peel over the drink and discard it."], garnish: "Orange peel.", profile: "Rich coffee, vanilla, orange, cinnamon, subtle chocolate.", style: "Smooth, aromatic & indulgent", occasion: "Late-night conversations and velvet playlists." },
+  { id: "cheeky-peachy-sago", name: "Cheeky-Peachy Sago", category: "Cinnamon whisky", product: "Sago Cinnamon Whisky", time: "6 min", difficulty: "★★☆☆☆", glass: "Highball", ice: "Cubed ice", image: "/assets/Cheeky Peach Sago Solid clrs.png", ingredients: ["50 ml Sago Cinnamon Whisky", "40 ml peach nectar", "15 ml fresh lemon juice", "50 ml soda water", "Ice"], equipment: ["Shaker", "Strainer", "Highball glass"], method: ["Add whisky, peach nectar and lemon to a shaker.", "Shake with ice.", "Strain into a highball filled with ice.", "Top with soda."], garnish: "Thin peach slice.", profile: "Juicy peach, lemon, sweet cinnamon, light carbonation.", style: "Soft, fruity & refreshing", occasion: "Golden hour with friends." },
+  { id: "sagos-plum-affair", name: "Sago’s Plum Affair", category: "Cinnamon whisky", product: "Sago Cinnamon Whisky", time: "7 min", difficulty: "★★★☆☆", glass: "Coupe", ice: "No ice", image: "/assets/SAGOS PLUM AFAIR solid clr.png", ingredients: ["50 ml Sago Cinnamon Whisky", "30 ml plum juice", "15 ml fresh lemon juice", "5 ml hot honey", "10 ml honey syrup", "Ice"], equipment: ["Shaker", "Double strainer", "Coupe"], method: ["Add all ingredients to a shaker.", "Shake hard with ice.", "Double strain into a chilled coupe."], garnish: "Thin slice of fresh plum.", profile: "Juicy plum, lemon, honey, cinnamon, subtle heat.", style: "Rich, fruity & warming", occasion: "A special pour for a close table." },
+  { id: "sago-toddy", name: "Sago Toddy", category: "Hot & comforting", product: "Sago Cinnamon Whisky", time: "6 min", difficulty: "★☆☆☆☆", glass: "Heatproof Irish Coffee", ice: "None", image: "/assets/SAGO Toddy.png", ingredients: ["50 ml Sago Cinnamon Whisky", "100 ml hot cloudy apple juice", "10 ml fresh lemon juice", "5 ml honey", "1 cinnamon stick", "Apple slice"], equipment: ["Heatproof glass", "Bar spoon", "Small saucepan"], method: ["Warm the apple juice.", "Pour it into a heatproof glass.", "Add honey and lemon.", "Add Sago Cinnamon Whisky.", "Stir gently."], garnish: "Apple slice and cinnamon stick.", profile: "Baked apple, honey, lemon, cinnamon, whisky warmth.", style: "Warm, cozy & fruit-forward", occasion: "A quiet winter gathering." },
+  { id: "sago-x-sago", name: "Sago x Sago", category: "Mixed whisky", product: "Sago Original + Cinnamon Whisky", time: "5 min", difficulty: "★☆☆☆☆", glass: "Highball", ice: "Long clear spear", image: "/assets/SAGO X SAGO.png", ingredients: ["25 ml Sago Original Whisky", "25 ml Sago Cinnamon Whisky", "100 ml soda water", "10 ml fresh lemon juice", "5 ml honey syrup", "2 dashes orange bitters", "Ice", "Orange peel"], equipment: ["Highball glass", "Bar spoon", "Jigger"], method: ["Fill a highball glass with ice.", "Add both whiskies, lemon juice, honey and bitters.", "Stir briefly.", "Top with soda.", "Stir once gently."], garnish: "Express an orange peel over the top and garnish.", profile: "Honey, vanilla, cinnamon, lemon, orange bitters, oak.", style: "Bright, refreshing & aromatic", occasion: "When one Sago expression is not enough." },
+  { id: "sago-blackout", name: "Sago Blackout", category: "Mixed whisky", product: "Sago Original + Cinnamon Whisky", time: "7 min", difficulty: "★★★☆☆", glass: "Nick & Nora", ice: "No ice", image: "/assets/SAGO_BLACKOUT.png", ingredients: ["30 ml Sago Original Whisky", "20 ml Sago Cinnamon Whisky", "20 ml sweet vermouth", "10 ml coffee liqueur", "2 dashes chocolate bitters", "Orange peel", "Ice"], equipment: ["Mixing glass", "Bar spoon", "Nick & Nora"], method: ["Add both whiskies, vermouth, coffee liqueur and bitters to a mixing glass.", "Fill with ice.", "Stir for 20–25 seconds.", "Strain into a chilled coupe or Nick & Nora."], garnish: "Express an orange peel over the surface and discard it.", profile: "Coffee, vermouth, chocolate, vanilla, cinnamon, oak.", style: "Dark, rich & sophisticated", occasion: "The final chapter of the evening." },
 ];
 
 const categories = ["All recipes", "Oak whisky", "Cinnamon whisky", "Hot & comforting", "Mixed whisky"];
 
-
-export default function CocktailsPage() {
+function CocktailsContent() {
   const [category, setCategory] = useState("All recipes");
   const [activeRecipe, setActiveRecipe] = useState(0);
   const reduceMotion = useReducedMotion();
-  const visibleRecipes = useMemo(() => category === "All recipes" ? recipes : recipes.filter((recipe) => recipe.category === category), [category]);
+  const searchParams = useSearchParams();
+  const requestedRecipe = searchParams.get("recipe");
+
+  const visibleRecipes = useMemo(
+    () => (category === "All recipes" ? recipes : recipes.filter((recipe) => recipe.category === category)),
+    [category]
+  );
   const selected = visibleRecipes[activeRecipe] ?? visibleRecipes[0];
 
-  const chooseCategory = (value: string) => { setCategory(value); setActiveRecipe(0); };
-  const chooseRecipe = (index: number) => {
-    setActiveRecipe(index);
-    window.requestAnimationFrame(() => document.getElementById("recipe-detail")?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" }));
+  // If redirected from carousel with a specific recipe parameter, select it and scroll smoothly into view
+  useEffect(() => {
+    if (requestedRecipe) {
+      const matchIdx = recipes.findIndex(
+        (r) =>
+          r.id === requestedRecipe ||
+          r.name.toLowerCase().replace(/[^a-z0-9]/g, "") === requestedRecipe.toLowerCase().replace(/[^a-z0-9]/g, "")
+      );
+      if (matchIdx !== -1) {
+        setCategory("All recipes");
+        setActiveRecipe(matchIdx);
+        setTimeout(() => {
+          document.getElementById("recipe-detail")?.scrollIntoView({
+            behavior: reduceMotion ? "auto" : "smooth",
+            block: "start",
+          });
+        }, 150);
+      }
+    }
+  }, [requestedRecipe, reduceMotion]);
+
+  const chooseCategory = (value: string) => {
+    setCategory(value);
+    setActiveRecipe(0);
   };
 
-  const chooseRecipeFromCarousel = (index: number) => {
-    const targetRecipe = recipes[index];
-    if (!targetRecipe) return;
-
-    if (category !== "All recipes") {
-      setCategory("All recipes");
-    }
+  const chooseRecipe = (index: number) => {
     setActiveRecipe(index);
-
-    window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() =>
       document.getElementById("recipe-detail")?.scrollIntoView({
         behavior: reduceMotion ? "auto" : "smooth",
         block: "start",
-      });
-    });
+      })
+    );
   };
 
   const scrollToRecipes = () => {
@@ -95,13 +113,6 @@ export default function CocktailsPage() {
             <p className="eyebrow">COCKTAILS</p>
             <h2 className="display">Find Your Next<br /><em>Favourite Cocktail</em></h2>
           </div>
-        </div>
-
-        <div className="cocktails-editorial-wrap">
-          <EditorialCocktailCarousel
-            onSelectRecipe={chooseRecipeFromCarousel}
-            activeRecipeIndex={activeRecipe}
-          />
         </div>
 
         <div className="cocktail-filters" id="recipe-filters">
@@ -198,5 +209,13 @@ export default function CocktailsPage() {
 
       <SiteFooter />
     </main>
+  );
+}
+
+export default function CocktailsPage() {
+  return (
+    <Suspense fallback={null}>
+      <CocktailsContent />
+    </Suspense>
   );
 }

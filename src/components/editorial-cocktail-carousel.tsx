@@ -31,7 +31,7 @@ export const SAGO_EDITORIAL_COCKTAILS: EditorialCocktail[] = [
   {
     id: "sago-gold-rush",
     name: "SAGO GOLD RUSH",
-    image: "/assets/cocktail.png",
+    image: "/assets/Tropical Golden Hour Cocktail Still Life.png",
     notes: ["WARMING GINGER", "TROPICAL PINEAPPLE", "EARTHY ROOIBOS"],
     product: "Sago Oak Whisky",
   },
@@ -43,9 +43,16 @@ export const SAGO_EDITORIAL_COCKTAILS: EditorialCocktail[] = [
     product: "Sago Oak Whisky",
   },
   {
+    id: "sagos-ruby-jewel",
+    name: "SAGO’S RUBY JEWEL",
+    image: "/assets/SAGO RUBY JWEL solid clr.png",
+    notes: ["TART RASPBERRY", "CITRUS HONEY", "SWEET VANILLA"],
+    product: "Sago Original Whisky",
+  },
+  {
     id: "apple-of-sagos-eye",
     name: "APPLE OF SAGO’S EYE",
-    image: "/assets/cocktail4.png",
+    image: "/assets/Candlelit Apple Cinnamon Whisky Cocktail.png",
     notes: ["CRISP APPLE", "WARM CINNAMON", "CITRUS BITTERS"],
     product: "Sago Cinnamon Whisky",
   },
@@ -55,13 +62,6 @@ export const SAGO_EDITORIAL_COCKTAILS: EditorialCocktail[] = [
     image: "/assets/cocktail2.png",
     notes: ["COLD BREW", "SWEET VANILLA", "ORANGE ESSENCE"],
     product: "Sago Cinnamon Whisky",
-  },
-  {
-    id: "sagos-ruby-jewel",
-    name: "SAGO’S RUBY JEWEL",
-    image: "/assets/SAGO RUBY JWEL solid clr.png",
-    notes: ["TART RASPBERRY", "CITRUS HONEY", "SWEET VANILLA"],
-    product: "Sago Original Whisky",
   },
   {
     id: "cheeky-peachy-sago",
@@ -76,13 +76,6 @@ export const SAGO_EDITORIAL_COCKTAILS: EditorialCocktail[] = [
     image: "/assets/SAGOS PLUM AFAIR solid clr.png",
     notes: ["JUICY PLUM", "SPICED HONEY", "CINNAMON HEAT"],
     product: "Sago Cinnamon Whisky",
-  },
-  {
-    id: "sago-golden-hour",
-    name: "SAGO GOLDEN HOUR",
-    image: "/assets/cocktail3.png",
-    notes: ["WARM HONEY", "CITRUS OILS", "CINNAMON BARK"],
-    product: "Sago Original Whisky",
   },
   {
     id: "sago-toddy",
@@ -108,7 +101,6 @@ export const SAGO_EDITORIAL_COCKTAILS: EditorialCocktail[] = [
 ];
 
 const BASE_COUNT = SAGO_EDITORIAL_COCKTAILS.length;
-// 3 repeated sets for seamless infinite loop (39 total items instead of 65)
 const COPIES = 3;
 const REPEATED_COCKTAILS = Array.from({ length: COPIES }, () => SAGO_EDITORIAL_COCKTAILS).flat();
 
@@ -126,15 +118,14 @@ export default function EditorialCocktailCarousel({
   const router = useRouter();
   const trackRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLElement | null)[]>([]);
-  // Start centered on the middle set
   const [featuredIndex, setFeaturedIndex] = useState(BASE_COUNT);
 
   const isDraggingRef = useRef(false);
   const dragStartXRef = useRef(0);
   const dragStartScrollLeftRef = useRef(0);
   const dragDistanceRef = useRef(0);
-  const lastWheelTimeRef = useRef(0);
   const isNormalizingRef = useRef(false);
+  const scrollIdleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToIndex = useCallback((targetIdx: number, smooth = true) => {
     const el = trackRef.current;
@@ -155,7 +146,7 @@ export default function EditorialCocktailCarousel({
   useEffect(() => {
     const timer = setTimeout(() => {
       scrollToIndex(BASE_COUNT, false);
-    }, 40);
+    }, 50);
     return () => clearTimeout(timer);
   }, [scrollToIndex]);
 
@@ -176,42 +167,50 @@ export default function EditorialCocktailCarousel({
     return () => window.removeEventListener("resize", handleResize);
   }, [featuredIndex, scrollToIndex]);
 
-  // Arrow click handler: moves exactly 1 card per click
-  const scrollByDirection = useCallback((direction: "left" | "right") => {
-    const nextIdx = direction === "left" ? featuredIndex - 1 : featuredIndex + 1;
-    scrollToIndex(nextIdx, true);
+  // Silent position normalization — ONLY called when the carousel has come to a COMPLETE stop
+  const checkNormalization = useCallback((currentIdx: number) => {
+    if (isNormalizingRef.current) return;
+    const el = trackRef.current;
+    const card0 = cardRefs.current[0];
+    const cardN = cardRefs.current[BASE_COUNT];
+    if (!el || !card0 || !cardN) return;
 
-    // Silent seamless wrap normalization
-    setTimeout(() => {
-      if (isNormalizingRef.current) return;
-      const el = trackRef.current;
-      const card0 = cardRefs.current[0];
-      const cardN = cardRefs.current[BASE_COUNT];
-      if (!el || !card0 || !cardN) return;
+    const oneSetWidth = cardN.offsetLeft - card0.offsetLeft;
+    if (oneSetWidth <= 0) return;
 
-      const oneSetWidth = cardN.offsetLeft - card0.offsetLeft;
-      if (oneSetWidth <= 0) return;
-
-      if (nextIdx >= BASE_COUNT * 2) {
-        isNormalizingRef.current = true;
-        el.scrollTo({ left: el.scrollLeft - oneSetWidth, behavior: "auto" });
-        setFeaturedIndex(nextIdx - BASE_COUNT);
-        isNormalizingRef.current = false;
-      } else if (nextIdx < BASE_COUNT) {
-        isNormalizingRef.current = true;
-        el.scrollTo({ left: el.scrollLeft + oneSetWidth, behavior: "auto" });
-        setFeaturedIndex(nextIdx + BASE_COUNT);
-        isNormalizingRef.current = false;
+    if (currentIdx >= BASE_COUNT * 2) {
+      isNormalizingRef.current = true;
+      const newIdx = currentIdx - BASE_COUNT;
+      const targetCard = cardRefs.current[newIdx];
+      if (targetCard) {
+        const targetScroll = targetCard.offsetLeft + targetCard.clientWidth / 2 - el.clientWidth / 2;
+        el.scrollTo({ left: Math.max(0, targetScroll), behavior: "auto" });
+        setFeaturedIndex(newIdx);
       }
-    }, 300);
-  }, [featuredIndex, scrollToIndex]);
+      isNormalizingRef.current = false;
+    } else if (currentIdx < BASE_COUNT) {
+      isNormalizingRef.current = true;
+      const newIdx = currentIdx + BASE_COUNT;
+      const targetCard = cardRefs.current[newIdx];
+      if (targetCard) {
+        const targetScroll = targetCard.offsetLeft + targetCard.clientWidth / 2 - el.clientWidth / 2;
+        el.scrollTo({ left: Math.max(0, targetScroll), behavior: "auto" });
+        setFeaturedIndex(newIdx);
+      }
+      isNormalizingRef.current = false;
+    }
+  }, []);
 
-  const snapToClosest = useCallback(() => {
+  // Track scroll updates featured index and schedules idle normalization
+  const onTrackScroll = useCallback(() => {
+    if (isNormalizingRef.current) return;
     const el = trackRef.current;
     if (!el) return;
+
     const center = el.scrollLeft + el.clientWidth / 2;
     let closestIdx = featuredIndex;
     let minDiff = Infinity;
+
     cardRefs.current.forEach((card, idx) => {
       if (!card) return;
       const cardCenter = card.offsetLeft + card.clientWidth / 2;
@@ -221,10 +220,27 @@ export default function EditorialCocktailCarousel({
         closestIdx = idx;
       }
     });
-    scrollToIndex(closestIdx, true);
+
+    if (closestIdx !== featuredIndex) {
+      setFeaturedIndex(closestIdx);
+    }
+
+    // Schedule normalization only after scrolling has completely stopped
+    if (scrollIdleTimeoutRef.current) {
+      clearTimeout(scrollIdleTimeoutRef.current);
+    }
+    scrollIdleTimeoutRef.current = setTimeout(() => {
+      checkNormalization(closestIdx);
+    }, 220);
+  }, [featuredIndex, checkNormalization]);
+
+  // Arrow click handler: moves exactly 1 card per click without skipping
+  const scrollByDirection = useCallback((direction: "left" | "right") => {
+    const nextIdx = direction === "left" ? featuredIndex - 1 : featuredIndex + 1;
+    scrollToIndex(nextIdx, true);
   }, [featuredIndex, scrollToIndex]);
 
-  // Touch handlers with real-time tracking
+  // Touch handlers
   const onTouchStart = (e: React.TouchEvent) => {
     isDraggingRef.current = true;
     dragStartXRef.current = e.touches[0].clientX;
@@ -236,7 +252,6 @@ export default function EditorialCocktailCarousel({
     if (!isDraggingRef.current || !trackRef.current) return;
     const deltaX = e.touches[0].clientX - dragStartXRef.current;
     dragDistanceRef.current = deltaX;
-    trackRef.current.scrollLeft = dragStartScrollLeftRef.current - deltaX;
   };
 
   const onTouchEnd = () => {
@@ -248,11 +263,11 @@ export default function EditorialCocktailCarousel({
     } else if (dist > 35) {
       scrollByDirection("left");
     } else {
-      snapToClosest();
+      scrollToIndex(featuredIndex, true);
     }
   };
 
-  // Mouse drag handlers with real-time 1:1 responsive tracking
+  // Mouse drag handlers
   const onMouseDown = (e: React.MouseEvent) => {
     isDraggingRef.current = true;
     dragStartXRef.current = e.clientX;
@@ -271,12 +286,12 @@ export default function EditorialCocktailCarousel({
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
     const dist = dragDistanceRef.current;
-    if (dist < -35) {
+    if (dist < -40) {
       scrollByDirection("right");
-    } else if (dist > 35) {
+    } else if (dist > 40) {
       scrollByDirection("left");
-    } else if (Math.abs(dist) > 5) {
-      snapToClosest();
+    } else if (Math.abs(dist) > 8) {
+      scrollToIndex(featuredIndex, true);
     }
   };
 
@@ -286,32 +301,16 @@ export default function EditorialCocktailCarousel({
     }
   };
 
-  // Trackpad / wheel horizontal swipe
-  const onWheel = (e: React.WheelEvent) => {
-    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 15) {
-      const now = Date.now();
-      if (now - lastWheelTimeRef.current > 240) {
-        lastWheelTimeRef.current = now;
-        if (e.deltaX > 0) {
-          scrollByDirection("right");
-        } else {
-          scrollByDirection("left");
-        }
-      }
-    }
-  };
-
+  // Clicking ANY card takes the user to that cocktail recipe on the cocktails tab
   const handleCardClick = (index: number) => {
     if (Math.abs(dragDistanceRef.current) > 8) return;
-    if (index === featuredIndex) {
-      const originalIndex = index % BASE_COUNT;
-      if (onSelectRecipe) {
-        onSelectRecipe(originalIndex);
-      } else {
-        router.push(`/cocktails`);
-      }
+    const originalIndex = index % BASE_COUNT;
+    const cocktail = SAGO_EDITORIAL_COCKTAILS[originalIndex];
+
+    if (onSelectRecipe) {
+      onSelectRecipe(originalIndex);
     } else {
-      scrollToIndex(index, true);
+      router.push(`/cocktails?recipe=${cocktail.id}#recipe-detail`);
     }
   };
 
@@ -339,6 +338,7 @@ export default function EditorialCocktailCarousel({
       <div
         ref={trackRef}
         className="editorial-carousel-track"
+        onScroll={onTrackScroll}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -346,7 +346,6 @@ export default function EditorialCocktailCarousel({
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseLeave}
-        onWheel={onWheel}
         tabIndex={0}
         role="region"
         aria-label="Sago signature cocktails carousel"

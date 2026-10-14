@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowDown, ArrowRight } from "lucide-react";
 import SiteNav from "@/components/site-nav";
 import SiteFooter from "@/components/site-footer";
+import EditorialCocktailCarousel from "@/components/editorial-cocktail-carousel";
 
 type Product = {
   name: string;
@@ -49,12 +49,6 @@ const comingSoonProduct = {
   description: "A bold new expression from the SAGO house.",
 };
 
-const cocktailLinks = [
-  { name: "The Sago Highball",  detail: "Sago Oak Whisky · Soda · Lemon",       image: "/assets/cocktail-highball.png" },
-  { name: "Sago-Blood Sour",   detail: "Sago Oak Whisky · Hibiscus · Honey",    image: "/assets/sago-blood-sour.png" },
-  { name: "Sago After Dark",   detail: "Sago Oak Whisky · Coffee · Vermouth",   image: "/assets/sago-after-dark.png" },
-];
-
 export default function CollectionPage() {
   return (
     <main className="collection-page">
@@ -75,9 +69,6 @@ export default function CollectionPage() {
         <div className="collection-hero__copy">
           <p className="eyebrow">OUR PRODUCTS</p>
           <h1 className="display">Many Occasions.<br /><em>One Bottle.</em></h1>
-          <a className="collection-hero__scroll" href="#range">
-            Explore the range <ArrowDown size={16} />
-          </a>
         </div>
       </section>
 
@@ -151,18 +142,7 @@ export default function CollectionPage() {
             <h2 className="display">Find Your Next<br /><em>Favourite Cocktail.</em></h2>
           </div>
         </div>
-        <div className="collection-cocktail-grid">
-          {cocktailLinks.map((cocktail) => (
-            <Link className="collection-cocktail" href="/cocktails" key={cocktail.name}>
-              <div>
-                <Image src={cocktail.image} alt={cocktail.name} fill sizes="(max-width: 800px) 100vw, 33vw" />
-              </div>
-              <p className="eyebrow">{cocktail.detail}</p>
-              <h3 className="display">{cocktail.name}</h3>
-              <span className="text-link">View recipe <ArrowRight size={15} /></span>
-            </Link>
-          ))}
-        </div>
+        <EditorialCocktailCarousel />
       </section>
       <SiteFooter />
     </main>
