@@ -409,12 +409,12 @@ export async function recordProductionSpinAndCoupon(params: {
   // Persist coupon first, then session atomically
   await writeLocalCoupon(coupon);
 
-  // Now persist the updated session
-  const sessions = readLocalSessions();
-  const sessionIndex = sessions.findIndex((s) => s.id === sessionId);
-  if (sessionIndex !== -1) {
-    sessions[sessionIndex] = updatedSession;
-    writeLocalSessions(sessions);
+  // Now persist the updated session (re-read to ensure we have latest)
+  const latestSessions = readLocalSessions();
+  const latestSessionIndex = latestSessions.findIndex((s) => s.id === sessionId);
+  if (latestSessionIndex !== -1) {
+    latestSessions[latestSessionIndex] = updatedSession;
+    writeLocalSessions(latestSessions);
   }
 
   return coupon;

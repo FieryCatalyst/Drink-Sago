@@ -231,20 +231,20 @@ async function runTestSuite() {
   // TEST GROUP 8: Bar Data Isolation & Row-Level Privacy
   // -------------------------------------------------------------------------
   console.log("\n--- 8. BAR DATA ISOLATION & ROW-LEVEL PRIVACY ---");
-  const barAActivity = getBarRedemptionActivity(barA.id);
-  const barBActivity = getBarRedemptionActivity(barB.id);
+  const barAActivity = await getBarRedemptionActivity(barA.id);
+  const barBActivity = await getBarRedemptionActivity(barB.id);
 
   assert(
-    barAActivity.recentActivity.every((log) => log.barId === barA.id),
+    barAActivity.recentActivity.every((log: any) => log.barId === barA.id),
     "Bar A activity query returns strictly logs belonging to Bar A"
   );
   assert(
-    barBActivity.recentActivity.every((log) => log.barId === barB.id),
+    barBActivity.recentActivity.every((log: any) => log.barId === barB.id),
     "Bar B activity query returns strictly logs belonging to Bar B"
   );
 
-  const barAHasCoupon1 = barAActivity.recentActivity.some((log) => log.couponCode === createdCoupon.code && log.action === "redeemed");
-  const barBHasCoupon1 = barBActivity.recentActivity.some((log) => log.couponCode === createdCoupon.code && log.action === "redeemed");
+  const barAHasCoupon1 = barAActivity.recentActivity.some((log: any) => log.couponCode === createdCoupon.code && log.action === "redeemed");
+  const barBHasCoupon1 = barBActivity.recentActivity.some((log: any) => log.couponCode === createdCoupon.code && log.action === "redeemed");
 
   assert(barAHasCoupon1, "Bar A shows successful redemption in its private history");
   assert(!barBHasCoupon1, "Bar B cannot see Bar A's successful redemption in its history (ISOLATION MAINTAINED)");
