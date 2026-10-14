@@ -165,12 +165,6 @@ export default function Step3PartnershipProducts({ data, errors, onChange }: Ste
                 key={prod.id}
                 type="button"
                 onClick={() => handleProductToggle(prod.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    handleProductToggle(prod.id);
-                  }
-                }}
                 style={{
                   background: prod.selected ? "rgba(176, 141, 87, 0.1)" : "rgba(255, 255, 255, 0.02)",
                   border: `1.5px solid ${prod.selected ? "#b08d57" : "rgba(255, 255, 255, 0.1)"}`,
@@ -186,7 +180,6 @@ export default function Step3PartnershipProducts({ data, errors, onChange }: Ste
                   width: "100%",
                 }}
                 aria-pressed={prod.selected}
-                aria-label={prod.selected ? `Deselect ${prod.productName}` : `Select ${prod.productName}`}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
                   <div>

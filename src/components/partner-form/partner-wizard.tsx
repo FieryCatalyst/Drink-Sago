@@ -245,6 +245,17 @@ export default function PartnerWizard() {
     }
   }, [formData.tradingName, formData.registeredBusinessName, formData.outletDisplayName, formData.ownerFullName, formData.ownerPosition, formData.signatoryFullName, formData.signatoryDesignation]);
 
+  // Sync marketing permissions with promotional visibility consent
+  useEffect(() => {
+    if (!formData.marketingCommsConsent) {
+      setFormData((prev) => ({
+        ...prev,
+        permListPartner: false,
+        permDisplayNameAddress: false,
+      }));
+    }
+  }, [formData.marketingCommsConsent]);
+
   const handleFieldChange = <K extends keyof PartnerFormData>(
     field: K,
     value: PartnerFormData[K]
