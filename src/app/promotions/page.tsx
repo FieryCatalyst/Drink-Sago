@@ -13,10 +13,11 @@ export default function PromotionsPage() {
       <main id="top">
         <section className="promotions-hero promotions-hero--slot">
           <Image
-            src="/assets/2.png"
-            alt="Sago Whisky Bottle"
+            src="/assets/Cinematic Cinnamon and Golden Smoke.png"
+            alt="Cinematic Cinnamon and Golden Smoke"
             fill
             priority
+            unoptimized
             sizes="100vw"
             className="promotions-hero__image"
           />

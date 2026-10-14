@@ -197,8 +197,6 @@ const INITIAL_FORM_DATA: PartnerFormData = {
   signatureDate: new Date().toISOString().split("T")[0],
 };
 
-const LOCAL_STORAGE_KEY = "sago_partner_onboarding_draft_v1";
-
 export default function PartnerWizard() {
   const [currentStep, setCurrentStep] = useState(1);
   const [maxStepVisited, setMaxStepVisited] = useState(1);
@@ -228,27 +226,6 @@ export default function PartnerWizard() {
     setTimeout(() => setToastMessage(null), 3000);
   }, []);
 
-  // Load saved draft on initial render
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === "object") {
-          setFormData((prev) => ({ ...prev, ...parsed }));
-          showToast("Resumed your saved application draft");
-        }
-      }
-      // Load saved reference for subsequent draft saves
-      const savedRef = localStorage.getItem("sago_partner_draft_reference");
-      if (savedRef) {
-        setSavedReference(savedRef);
-      }
-    } catch {
-      // LocalStorage unavailable
-    }
-  }, [showToast]);
-
   // Sync outlet display name from trading name if not filled
   useEffect(() => {
     if (formData.tradingName && !formData.outletDisplayName) {
@@ -268,12 +245,6 @@ export default function PartnerWizard() {
   ) => {
     setFormData((prev) => {
       const updated = { ...prev, [field]: value };
-      // Save locally automatically
-      try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updated));
-      } catch {
-        // Ignored
-      }
       return updated;
     });
 
@@ -378,13 +349,6 @@ export default function PartnerWizard() {
       setCameFromReview(false);
     }
 
-    // Auto-save current progress locally so user doesn't lose data
-    try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formData));
-    } catch {
-      // Ignored
-    }
-
     setCurrentStep(step);
     setMaxStepVisited((prev) => Math.max(prev, step));
     setStepErrors({});
@@ -407,10 +371,7 @@ export default function PartnerWizard() {
 
   const handleSaveDraft = async () => {
     try {
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(formData));
-
-      // Also persist to server draft registry
-      // Use savedReference as ownershipToken when updating existing draft
+      // Persist to server draft registry
       const ownershipToken = savedReference ? localStorage.getItem("sago_partner_draft_id") : undefined;
       const res = await fetch("/api/partners/register", {
         method: "POST",
@@ -430,10 +391,10 @@ export default function PartnerWizard() {
         }
         showToast(`Draft saved successfully (Ref: ${d.reference})`);
       } else {
-        showToast("Draft saved to browser storage.");
+        showToast("Failed to save draft to server.");
       }
     } catch {
-      showToast("Draft saved locally in browser.");
+      showToast("Failed to save draft to server.");
     }
   };
 
@@ -462,7 +423,6 @@ export default function PartnerWizard() {
       }
 
       // Clear draft and ownership token on successful submission
-      localStorage.removeItem(LOCAL_STORAGE_KEY);
       localStorage.removeItem("sago_partner_draft_reference");
       localStorage.removeItem("sago_partner_draft_id");
 

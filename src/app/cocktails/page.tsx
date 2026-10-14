@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Clock3 } from "lucide-react";
+import { ArrowLeft, Clock3 } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useMemo, useState } from "react";
 import SiteNav from "@/components/site-nav";
@@ -180,12 +180,19 @@ export default function CocktailsPage() {
       </AnimatePresence>
 
       <section className="cocktail-final-cta">
-        <Image src="/assets/7.png" alt="Sago whisky ready to share" fill sizes="100vw" />
+        <Image
+          src="/assets/Moonlit Mediterranean Terrace Retreat.png"
+          alt="Moonlit Mediterranean Terrace Retreat | SAGO Whisky"
+          fill
+          priority
+          unoptimized
+          sizes="100vw"
+        />
         <div className="cocktail-final-cta__shade" />
         <div className="cocktail-final-cta__copy">
           <p className="eyebrow">Your next pour is waiting</p>
           <h2 className="display">Make it<br /><em>a Sago night.</em></h2>
-          <Link className="button" href="/#shop">Find a retailer <ArrowRight size={15} /></Link>
+          <Link className="button" href="/#shop">Find a retailer</Link>
         </div>
       </section>
 

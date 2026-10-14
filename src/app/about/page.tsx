@@ -19,11 +19,6 @@ const manifesto = [
   "Behind every bottle is a balance of craft and character. Thoughtfully selected ingredients, considered blending, and a dedication to creating spirits that are smooth, distinctive, and made to be shared.",
 ];
 
-const chapters = [
-  { number: "01", eyebrow: "The bottle", title: "Strength and\nsoftness, together.", copy: "Our bottle embodies that spirit. Its bold, grenade-inspired silhouette speaks to character, confidence, and impact, while its delicate floral detailing brings a softer, more expressive side to the design.", image: "/assets/3.png" },
-  { number: "02", eyebrow: "The mark", title: "It commands\nthe attention.", copy: "At its heart is our lion paw, a mark of confidence, sophistication, and majesty. Not a symbol that demands attention, but one that commands it.", image: "/assets/8.png" },
-];
-
 const stages = [
   { number: "01", title: "Select", copy: "The right grain, chosen for a generous first note." },
   { number: "02", title: "Rest", copy: "Oak gives the spirit warmth, depth and a longer story." },
@@ -57,11 +52,41 @@ export default function AboutPage() {
     <main className="about-page">
       <SiteNav />
 
-      <section className="about-hero"><Image src="/assets/8.png" alt="Sago bottle in a warm, considered setting" fill priority sizes="100vw" className="about-hero__image" /><div className="about-hero__shade" /><motion.div className="about-hero__glow" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 2 }} /><div className="about-hero__copy"><motion.p className="eyebrow" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .8, delay: .3 }}>About Sago · Good spirits, brighter tomorrows</motion.p><motion.h1 className="display" initial={{ opacity: 0, y: 38 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: .45, ease: [0.16, 1, 0.3, 1] }}>A spirit with<br /><em>somewhere to go.</em></motion.h1><motion.p className="about-hero__lede" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: .9 }}>Rooted in nature. Crafted for the conversations that move us forward.</motion.p><a className="about-hero__scroll" href="#story">Begin the story <ArrowDown size={16} /></a></div></section>
+      <section className="about-hero">
+        <Image
+          src="/assets/sago gold reserve whisky in nature.png"
+          alt="SAGO Gold Reserve Whisky in Nature"
+          fill
+          priority
+          unoptimized
+          sizes="100vw"
+          className="about-hero__image"
+        />
+        <div className="about-hero__shade" />
+        <motion.div
+          className="about-hero__glow"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 2 }}
+        />
+        <div className="about-hero__copy">
+          <motion.h1
+            className="display"
+            initial={{ opacity: 0, y: 38 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, delay: 0.45, ease: [0.16, 1, 0.3, 1] }}
+          >
+            A spirit with
+            <br />
+            <em>somewhere to go.</em>
+          </motion.h1>
+          <a className="about-hero__scroll" href="#story">
+            Begin the story <ArrowDown size={16} />
+          </a>
+        </div>
+      </section>
 
-      <section className="about-manifesto section-pad"><div className="about-manifesto__statement"><Reveal><p className="eyebrow">Our story</p><h2 className="display">Every moment is worth<br /><em>celebrating with SAGO.</em></h2></Reveal></div><div className="about-manifesto__body">{manifesto.map((line, index) => <Reveal key={line}><p className={index === 0 ? "about-manifesto__lead body-copy" : "body-copy"}>{line}</p></Reveal>)}</div></section>
-
-      <section className="about-chapters section-pad" id="story"><div className="about-chapters__intro"><p className="eyebrow">Our point of view</p><h2 className="display">The spirit is<br /><em>the story.</em></h2></div><div className="about-chapter-list">{chapters.map((chapter) => <Reveal className="about-chapter" key={chapter.number}><div className="about-chapter__image"><Image src={chapter.image} alt={chapter.title.replace("\n", " ")} fill sizes="(max-width: 800px) 100vw, 42vw" /></div><div className="about-chapter__copy"><span>{chapter.number}</span><p className="eyebrow">{chapter.eyebrow}</p><h3 className="display">{chapter.title.split("\n").map((line) => <span key={line}>{line}<br /></span>)}</h3><p className="body-copy">{chapter.copy}</p></div></Reveal>)}</div></section>
+      <section className="about-manifesto section-pad" id="story"><div className="about-manifesto__statement"><Reveal><p className="eyebrow">Our story</p><h2 className="display">Every moment is worth<br /><em>celebrating with SAGO.</em></h2></Reveal></div><div className="about-manifesto__body">{manifesto.map((line, index) => <Reveal key={line}><p className={index === 0 ? "about-manifesto__lead body-copy" : "body-copy"}>{line}</p></Reveal>)}</div></section>
 
       <section className="about-values section-pad"><Reveal><div className="section-heading"><div><p className="eyebrow">What we stand for</p><h2 className="display">Three things<br /><em>worth keeping.</em></h2></div></div></Reveal><div className="about-values__grid">{values.map((value) => <Reveal className="about-value" key={value.title}><span className="about-value__number">{value.number}</span><h3 className="display">{value.title}</h3><p>{value.copy}</p></Reveal>)}</div></section>
 
@@ -72,8 +97,8 @@ export default function AboutPage() {
           <div className="about-lifestyle__primary">
             <div className="about-lifestyle__image about-lifestyle__image--one">
               <Image
-                src="/assets/6.png"
-                alt="Sago bottle against oak and stone"
+                src="/assets/Golden Oak Whisky Still Life.png"
+                alt="SAGO Gold Reserve Whisky Still Life"
                 fill
                 sizes="(max-width: 800px) 90vw, 45vw"
                 priority
@@ -98,14 +123,6 @@ export default function AboutPage() {
                 <p className="about-lifestyle__signoff">
                   Celebrate the moment. Raise a glass to it.
                 </p>
-              </div>
-              <div className="about-lifestyle__image about-lifestyle__image--two">
-                <Image
-                  src="/assets/4.png"
-                  alt="Sago being poured into a glass"
-                  fill
-                  sizes="(max-width: 800px) 90vw, 25vw"
-                />
               </div>
             </div>
           </div>

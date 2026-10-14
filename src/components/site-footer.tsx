@@ -88,7 +88,7 @@ export default function SiteFooter() {
             <Link href="/partners/register">Partner With Us</Link>
           </div>
           <Link className="button footer-collective" href="/club">
-            Join the SAGO Collective <ArrowRight size={15} />
+            Join the SAGO Collective
           </Link>
         </div>
         <div className="footer-social">

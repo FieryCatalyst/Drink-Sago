@@ -9,6 +9,7 @@ import SiteFooter from "@/components/site-footer";
 type Product = {
   name: string;
   type: string;
+  id?: string;
   abv?: string;
   size?: string;
   image: string;
@@ -19,24 +20,26 @@ type Product = {
 
 const products: Product[] = [
   {
-    name: "CINNAMON WHISKY",
-    type: "Sago Spirits",
-    abv: "—",
-    size: "750 ml",
-    image: "/assets/3.png",
-    nose: "SPICY CINNAMON, SYRUPY BROWN SUGAR AND DELICATE OAK WOOD NOTES",
-    taste: "EXCEPTIONALLY SMOOTH, SWEET SHOT OF RED-HOT CINNAMON CANDY.",
-    finish: "HINTS OF SOFT OAK BLENDED WITH A WARMING AND SPICY KICK.",
-  },
-  {
     name: "GOLD RESERVE WHISKY",
+    id: "gold-reserve",
     type: "Premium Oak Whisky",
-    abv: "42.8% ABV",
-    size: "750 ml",
-    image: "/assets/5.png",
+    abv: "40% ABV",
+    size: "750 ml · 200 ml · 180 ml",
+    image: "/assets/Sago gold reseve whisky bottle.png",
     nose: "TOASTED OAK WITH DELICATE VANILLA",
     taste: "SMOOTH, RICH, AND FRESH FLORALS",
     finish: "HINTS OF PLEASANT NUTTINESS, TOASTED WOOD AND SWEET VANILLA BEAN.",
+  },
+  {
+    name: "CINNAMON WHISKY",
+    id: "cinnamon",
+    type: "Sago Spirits",
+    abv: "40% ABV",
+    size: "750 ml · 200 ml · 180 ml",
+    image: "/assets/premium sago cinnamon whisky.png",
+    nose: "SPICY CINNAMON, SYRUPY BROWN SUGAR AND DELICATE OAK WOOD NOTES",
+    taste: "EXCEPTIONALLY SMOOTH, SWEET SHOT OF RED-HOT CINNAMON CANDY.",
+    finish: "HINTS OF SOFT OAK BLENDED WITH A WARMING AND SPICY KICK.",
   },
 ];
 
@@ -44,7 +47,6 @@ const comingSoonProduct = {
   name: "Agave Spirits",
   type: "Agave Expression",
   description: "A bold new expression from the SAGO house.",
-  finish: "FRESH AGAVE, CITRUS FRUIT WITH A PEPPERY FINISH",
 };
 
 const cocktailLinks = [
@@ -61,10 +63,11 @@ export default function CollectionPage() {
       {/* HERO */}
       <section className="collection-hero">
         <Image
-          src="/assets/1.png"
-          alt="SAGO Products | The House of Premium Spirits"
+          src="/assets/Sago Gold Reserve Whisky in Amber Smoke.png"
+          alt="SAGO Gold Reserve Whisky in Amber Smoke | The House of Premium Spirits"
           fill
           priority
+          unoptimized
           sizes="100vw"
           className="collection-hero__image"
         />
@@ -92,7 +95,7 @@ export default function CollectionPage() {
           {products.map((product) => (
             <article className="collection-product" key={product.name}>
               <div className="collection-product__top">
-                <div className="collection-product__image">
+                <div className={`collection-product__image${product.id ? ` collection-product__image--${product.id}` : ""}`}>
                   <Image src={product.image} alt={product.name} fill sizes="(max-width: 800px) 100vw, 50vw" />
                 </div>
                 <div className="collection-product__summary">
@@ -137,12 +140,6 @@ export default function CollectionPage() {
               <p className="collection-coming-soon__desc">{comingSoonProduct.description}</p>
             </div>
           </div>
-          {comingSoonProduct.finish && (
-            <div className="collection-coming-soon__notes">
-              <span>Finish</span>
-              <p>{comingSoonProduct.finish}</p>
-            </div>
-          )}
         </div>
       </section>
 

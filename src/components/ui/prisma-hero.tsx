@@ -91,7 +91,7 @@ const PrismaHero = () => {
   return (
     <section className="sago-prisma-hero">
       <Image
-        src="/assets/2.png"
+        src="/assets/sago gold whisky still life.png"
         alt="Sago Gold Reserve Whisky with a glass of whisky"
         fill
         priority
@@ -132,7 +132,7 @@ const PrismaHero = () => {
             <a href="#collection" className="sago-prisma-hero__button">
               Explore collection <ArrowRight size={15} />
             </a>
-            <span>42.8% ABV · 750 ml</span>
+            <span>40% ABV · 750 ml · 200 ml · 180 ml</span>
           </motion.div>
         </div>
       </div>
