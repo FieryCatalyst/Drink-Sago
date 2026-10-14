@@ -86,11 +86,11 @@ export const DEMO_VENUES: Venue[] = [
 ];
 
 export const BIG_5_SYMBOLS: GameSymbol[] = [
-  { name: "Lion", image: "/assets/LION.svg", subtitle: "King of the Pour" },
+  { name: "Lion", image: "/assets/LION_crown_aligned.svg", subtitle: "King of the Pour" },
   { name: "Leopard", image: "/assets/LEOPARD.svg", subtitle: "Grace & Mystery" },
-  { name: "Elephant", image: "/assets/ELEPHANT.svg", subtitle: "Majestic Power" },
+  { name: "Elephant", image: "/assets/ELEPHANT_crown_aligned.svg", subtitle: "Majestic Power" },
   { name: "Rhino", image: "/assets/Rhinoceros.svg", subtitle: "Unstoppable Force" },
-  { name: "Cape buffalo", image: "/assets/Cape buffalo.svg", subtitle: "Untamed Spirit" },
+  { name: "Cape buffalo", image: "/assets/Cape_buffalo_crown_aligned.svg", subtitle: "Untamed Spirit" },
 ];
 
 export const ANIMAL_WEIGHTS: Record<string, number> = {

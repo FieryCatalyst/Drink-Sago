@@ -213,7 +213,12 @@ export default function PartnerWizard() {
         if (res.ok) {
           const data = await res.json();
           if (data.formData) {
-            setFormData(data.formData);
+            // Ensure marketing permissions are disabled when consent is false
+            const formData = data.formData;
+            const correctedFormData = !formData.marketingCommsConsent
+              ? { ...formData, permListPartner: false, permDisplayNameAddress: false }
+              : formData;
+            setFormData(correctedFormData);
             setSavedReference(data.reference);
           }
         }
@@ -363,6 +368,11 @@ export default function PartnerWizard() {
     // Resolve signatory name: use signatoryFullName if provided, otherwise fall back to ownerFullName
     const resolvedSignatoryName = formData.signatoryFullName?.trim() || formData.ownerFullName?.trim() || "";
 
+    // Ensure marketing permissions are disabled when consent is false
+    const submitData = !formData.marketingCommsConsent
+      ? { ...formData, permListPartner: false, permDisplayNameAddress: false, signatoryFullName: resolvedSignatoryName }
+      : { ...formData, signatoryFullName: resolvedSignatoryName };
+
     setIsSubmitting(true);
 
     try {
@@ -371,7 +381,7 @@ export default function PartnerWizard() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          data: { ...formData, signatoryFullName: resolvedSignatoryName },
+          data: submitData,
           isDraft: false,
           existingReference: savedReference,
           ownershipToken,
