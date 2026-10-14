@@ -383,7 +383,7 @@ export default function SagoSlotMachine() {
           <div className="slot-registration__header-row">
             <div>
               <p className="slot-registration__kicker">Enter the night</p>
-              <h2>Make it<br /><em>your night.</em></h2>
+              <h2>Make it<br /><em>your night</em></h2>
             </div>
             <button
               type="button"
@@ -748,7 +748,7 @@ export default function SagoSlotMachine() {
             </button>
 
             <div className="slot-result" aria-live="polite">
-              <h3 id="slot-result-title">Your night<br /><em>has spoken.</em></h3>
+              <h3 id="slot-result-title">Your night<br /><em>has spoken</em></h3>
 
               {/* Dual Discounts according to SAGO Reward Hierarchy */}
               <div className="slot-result__discount-grid">

@@ -40,7 +40,7 @@ export default function PromotionsPage() {
         <section className="promotions-slot-band" id="wild-spirits">
           <div className="promotions-slot-band__container">
             <div className="promotions-slot-band__intro">
-              <h2 className="display">Find your<br /><em>wild side.</em></h2>
+              <h2 className="display">Find your<br /><em>wild side</em></h2>
               <p>
                 TONIGHT HAS PLANS OF ITS OWN.<br />
                 DISCOVER YOUR SIDE QUEST. UNLOCK YOUR NIGHT

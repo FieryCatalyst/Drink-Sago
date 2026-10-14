@@ -213,7 +213,7 @@ function CocktailsContent() {
         <div className="cocktail-final-cta__shade" />
         <div className="cocktail-final-cta__copy">
           <p className="eyebrow">Your next pour is waiting</p>
-          <h2 className="display">Make it<br /><em>a Sago night.</em></h2>
+          <h2 className="display">Make it<br /><em>a Sago night</em></h2>
           <Link className="button" href="/#shop">Find a retailer</Link>
         </div>
       </section>

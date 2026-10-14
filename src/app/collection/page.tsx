@@ -68,7 +68,7 @@ export default function CollectionPage() {
         <div className="collection-hero__shade" />
         <div className="collection-hero__copy">
           <p className="eyebrow">OUR PRODUCTS</p>
-          <h1 className="display">Many Occasions.<br /><em>One Bottle.</em></h1>
+          <h1 className="display">Many Occasions<br /><em>One Bottle</em></h1>
         </div>
       </section>
 
@@ -77,7 +77,7 @@ export default function CollectionPage() {
         <div className="section-heading">
           <div>
             <p className="eyebrow">OUR PRODUCTS</p>
-            <h2 className="display">Find your<br /><em>expression.</em></h2>
+            <h2 className="display">Find your<br /><em>expression</em></h2>
           </div>
         </div>
 
@@ -139,7 +139,7 @@ export default function CollectionPage() {
         <div className="section-heading">
           <div>
             <p className="eyebrow">Cocktail Recipes</p>
-            <h2 className="display">Find Your Next<br /><em>Favourite Cocktail.</em></h2>
+            <h2 className="display">Find Your Next<br /><em>Favourite Cocktail</em></h2>
           </div>
         </div>
         <EditorialCocktailCarousel />

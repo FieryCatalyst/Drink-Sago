@@ -216,7 +216,14 @@ export default function PartnerWizard() {
             // Ensure marketing permissions are disabled when consent is false
             const formData = data.formData;
             const correctedFormData = !formData.marketingCommsConsent
-              ? { ...formData, permListPartner: false, permDisplayNameAddress: false }
+              ? {
+                  ...formData,
+                  permListPartner: false,
+                  permDisplayNameAddress: false,
+                  permUsePhotos: false,
+                  permDisplayPromoMaterials: false,
+                  permSocialChannels: false,
+                }
               : formData;
             setFormData(correctedFormData);
             setSavedReference(data.reference);
@@ -257,6 +264,9 @@ export default function PartnerWizard() {
         ...prev,
         permListPartner: false,
         permDisplayNameAddress: false,
+        permUsePhotos: false,
+        permDisplayPromoMaterials: false,
+        permSocialChannels: false,
       }));
     }
   }, [formData.marketingCommsConsent]);
@@ -370,7 +380,15 @@ export default function PartnerWizard() {
 
     // Ensure marketing permissions are disabled when consent is false
     const submitData = !formData.marketingCommsConsent
-      ? { ...formData, permListPartner: false, permDisplayNameAddress: false, signatoryFullName: resolvedSignatoryName }
+      ? {
+          ...formData,
+          permListPartner: false,
+          permDisplayNameAddress: false,
+          permUsePhotos: false,
+          permDisplayPromoMaterials: false,
+          permSocialChannels: false,
+          signatoryFullName: resolvedSignatoryName,
+        }
       : { ...formData, signatoryFullName: resolvedSignatoryName };
 
     setIsSubmitting(true);
