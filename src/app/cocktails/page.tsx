@@ -29,6 +29,40 @@ type Cocktail = {
   occasion: string;
 };
 
+function RecipeSelector({ activeRecipe, setActiveRecipe, category, setCategory, reduceMotion }: {
+  activeRecipe: number;
+  setActiveRecipe: React.Dispatch<React.SetStateAction<number>>;
+  category: string;
+  setCategory: React.Dispatch<React.SetStateAction<string>>;
+  reduceMotion: boolean | null;
+}) {
+  const searchParams = useSearchParams();
+  const requestedRecipe = searchParams.get("recipe");
+
+  // If redirected from carousel with a specific recipe parameter, select it and scroll smoothly into view
+  useEffect(() => {
+    if (requestedRecipe) {
+      const matchIdx = recipes.findIndex(
+        (r) =>
+          r.id === requestedRecipe ||
+          r.name.toLowerCase().replace(/[^a-z0-9]/g, "") === requestedRecipe.toLowerCase().replace(/[^a-z0-9]/g, "")
+      );
+      if (matchIdx !== -1) {
+        setCategory("All recipes");
+        setActiveRecipe(matchIdx);
+        setTimeout(() => {
+          document.getElementById("recipe-detail")?.scrollIntoView({
+            behavior: reduceMotion ? "auto" : "smooth",
+            block: "start",
+          });
+        }, 150);
+      }
+    }
+  }, [requestedRecipe, reduceMotion, setActiveRecipe, setCategory]);
+
+  return null;
+}
+
 const recipes: Cocktail[] = [
   { id: "sago-highball", name: "The Sago Highball", category: "Oak whisky", product: "Sago Oak Whisky", time: "5 min", difficulty: "★☆☆☆☆", glass: "Highball", ice: "Long clear spear", image: "/assets/cocktail-highball.png", ingredients: ["50 ml Sago Oak Whisky", "100 ml soda water", "10 ml fresh lemon juice", "5 ml honey syrup", "2 dashes orange bitters", "Large ice", "Lemon peel"], equipment: ["Highball glass", "Bar spoon", "Jigger"], method: ["Fill a highball glass completely with ice.", "Add Sago Oak Whisky, lemon juice, honey syrup and bitters.", "Stir gently.", "Top with soda.", "Give it one gentle lift from the bottom with a bar spoon."], garnish: "Express a lemon peel over the drink and drop it in.", profile: "Light honey sweetness, lemon, orange aromatics, vanilla, clean oak.", style: "Bright, refreshing & effervescent", occasion: "Long afternoons and easy first rounds." },
   { id: "sago-blood-sour", name: "Sago-Blood Sour", category: "Oak whisky", product: "Sago Oak Whisky", time: "8 min", difficulty: "★★☆☆☆", glass: "Coupe", ice: "No ice", image: "/assets/sago-blood-sour.png", ingredients: ["50 ml Sago Oak Whisky", "25 ml fresh lemon juice", "15 ml hibiscus-honey syrup", "15 ml egg white", "2 dashes Angostura bitters", "Ice"], prep: ["Combine 100 g honey, 100 ml water and 2–3 g dried hibiscus.", "Steep, then strain to make the hibiscus-honey syrup."], equipment: ["Shaker", "Fine strainer", "Coupe"], method: ["Add everything to a shaker without ice.", "Shake vigorously for 10–15 seconds.", "Add ice and shake again.", "Double strain into a chilled coupe."], garnish: "Finish with 2–3 drops of Angostura bitters on the foam.", profile: "Tart hibiscus, lemon, honey, floral berry notes, bitters.", style: "Silky, tart & elegant", occasion: "A slow beginning to a long evening." },
@@ -50,35 +84,12 @@ function CocktailsContent() {
   const [category, setCategory] = useState("All recipes");
   const [activeRecipe, setActiveRecipe] = useState(0);
   const reduceMotion = useReducedMotion();
-  const searchParams = useSearchParams();
-  const requestedRecipe = searchParams.get("recipe");
 
   const visibleRecipes = useMemo(
     () => (category === "All recipes" ? recipes : recipes.filter((recipe) => recipe.category === category)),
     [category]
   );
   const selected = visibleRecipes[activeRecipe] ?? visibleRecipes[0];
-
-  // If redirected from carousel with a specific recipe parameter, select it and scroll smoothly into view
-  useEffect(() => {
-    if (requestedRecipe) {
-      const matchIdx = recipes.findIndex(
-        (r) =>
-          r.id === requestedRecipe ||
-          r.name.toLowerCase().replace(/[^a-z0-9]/g, "") === requestedRecipe.toLowerCase().replace(/[^a-z0-9]/g, "")
-      );
-      if (matchIdx !== -1) {
-        setCategory("All recipes");
-        setActiveRecipe(matchIdx);
-        setTimeout(() => {
-          document.getElementById("recipe-detail")?.scrollIntoView({
-            behavior: reduceMotion ? "auto" : "smooth",
-            block: "start",
-          });
-        }, 150);
-      }
-    }
-  }, [requestedRecipe, reduceMotion]);
 
   const chooseCategory = (value: string) => {
     setCategory(value);
@@ -208,14 +219,19 @@ function CocktailsContent() {
       </section>
 
       <SiteFooter />
+      <Suspense fallback={null}>
+        <RecipeSelector
+          activeRecipe={activeRecipe}
+          setActiveRecipe={setActiveRecipe}
+          category={category}
+          setCategory={setCategory}
+          reduceMotion={reduceMotion}
+        />
+      </Suspense>
     </main>
   );
 }
 
 export default function CocktailsPage() {
-  return (
-    <Suspense fallback={null}>
-      <CocktailsContent />
-    </Suspense>
-  );
+  return <CocktailsContent />;
 }

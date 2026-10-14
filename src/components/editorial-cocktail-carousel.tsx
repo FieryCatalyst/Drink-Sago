@@ -124,6 +124,7 @@ export default function EditorialCocktailCarousel({
   const dragStartXRef = useRef(0);
   const dragStartScrollLeftRef = useRef(0);
   const dragDistanceRef = useRef(0);
+  const dragStartFeaturedIndexRef = useRef(0);
   const isNormalizingRef = useRef(false);
   const scrollIdleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -273,6 +274,7 @@ export default function EditorialCocktailCarousel({
     dragStartXRef.current = e.clientX;
     dragStartScrollLeftRef.current = trackRef.current ? trackRef.current.scrollLeft : 0;
     dragDistanceRef.current = 0;
+    dragStartFeaturedIndexRef.current = featuredIndex;
   };
 
   const onMouseMove = (e: React.MouseEvent) => {
@@ -286,10 +288,11 @@ export default function EditorialCocktailCarousel({
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
     const dist = dragDistanceRef.current;
+    const startIdx = dragStartFeaturedIndexRef.current;
     if (dist < -40) {
-      scrollByDirection("right");
+      scrollToIndex(startIdx + 1, true);
     } else if (dist > 40) {
-      scrollByDirection("left");
+      scrollToIndex(startIdx - 1, true);
     } else if (Math.abs(dist) > 8) {
       scrollToIndex(featuredIndex, true);
     }
