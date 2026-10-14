@@ -72,7 +72,7 @@ export async function POST(request: Request) {
           }
 
           if (customerId) {
-            await supabase.from("consents").insert({
+            const { error: consentError } = await supabase.from("consents").insert({
               campaign_id: campaign.id,
               consent_timestamp: consent ? new Date().toISOString() : null,
               customer_id: customerId,
@@ -82,7 +82,15 @@ export async function POST(request: Request) {
               terms_version: process.env.SAGO_TERMS_VERSION ?? "2026.1",
             });
 
-            const { data: session } = await supabase
+            if (consentError) {
+              console.error("[SessionAPI] Consent insert failed:", consentError);
+              return NextResponse.json(
+                { error: "Failed to record consent" },
+                { status: 500 }
+              );
+            }
+
+            const { data: session, error: sessionError } = await supabase
               .from("game_sessions")
               .insert({
                 campaign_id: campaign.id,
@@ -93,14 +101,20 @@ export async function POST(request: Request) {
               .select("id")
               .single();
 
-            if (session?.id) {
-              return NextResponse.json({
-                session_id: session.id,
-                venue: venue?.venues || selectedVenue,
-                customer: { name, email },
-                is_demo: false,
-              });
+            if (sessionError || !session?.id) {
+              console.error("[SessionAPI] Session insert failed:", sessionError);
+              return NextResponse.json(
+                { error: "Failed to create session" },
+                { status: 500 }
+              );
             }
+
+            return NextResponse.json({
+              session_id: session.id,
+              venue: venue?.venues || selectedVenue,
+              customer: { name, email },
+              is_demo: false,
+            });
           }
         }
       } catch (dbErr) {
@@ -125,18 +139,9 @@ export async function POST(request: Request) {
     });
   } catch (err) {
     console.error("[SessionAPI] Fatal error in game session:", err);
-    // Even in catch, create a valid production session
-    const fallbackVenue = SAGO_ZAMBIA_VENUES[0];
-    const session = await createProductionSession({
-      name: "SAGO Guest",
-      email: "guest@drinksago.com",
-      venueId: fallbackVenue.id,
-      marketingConsent: true,
-    });
-    return NextResponse.json({
-      session_id: session.id,
-      venue: fallbackVenue,
-      is_demo: false,
-    });
+    return NextResponse.json(
+      { error: "Unable to create session" },
+      { status: 500 }
+    );
   }
 }

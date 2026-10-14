@@ -5,18 +5,18 @@ import { SAGO_ZAMBIA_VENUES } from "@/lib/game/demo-data";
 
 export async function GET() {
   try {
-    const campaignSlug = process.env.SAGO_CAMPAIGN_SLUG;
-    if (!campaignSlug || !hasSupabaseServerEnv()) {
-      return NextResponse.json({
-        campaign: {
-          id: "sago-wild-card-zambia",
-          name: "SAGO Big 5 Zambia Tour",
-          slug: "sago-wild-card",
-        },
-        venues: SAGO_ZAMBIA_VENUES,
-        is_demo: false,
-      });
-    }
+const campaignSlug = process.env.SAGO_CAMPAIGN_SLUG;
+  if (!campaignSlug || !hasSupabaseServerEnv()) {
+    return NextResponse.json({
+      campaign: {
+        id: "sago-wild-card-zambia",
+        name: "SAGO Big 5 Zambia Tour",
+        slug: "sago-wild-card",
+      },
+      venues: SAGO_ZAMBIA_VENUES,
+      is_demo: true,
+    });
+  }
 
     const supabase = getSupabaseAdmin();
     const { data: campaign, error: campaignError } = await supabase
@@ -48,7 +48,7 @@ export async function GET() {
     if (venueError || !campaignVenues || campaignVenues.length === 0) {
       return NextResponse.json({
         campaign: { id: campaign.id, name: campaign.name, slug: campaign.slug },
-        venues: SAGO_ZAMBIA_VENUES,
+        venues: [],
         is_demo: false,
       });
     }
@@ -67,7 +67,7 @@ export async function GET() {
         slug: "sago-wild-card",
       },
       venues: SAGO_ZAMBIA_VENUES,
-      is_demo: false,
+      is_demo: true,
     });
   }
 }

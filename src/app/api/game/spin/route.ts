@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomInt } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomInt } from "node:crypto";
 import { NextResponse } from "next/server";
 import QRCode from "qrcode";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
         const supabase = getSupabaseAdmin();
         const { data: session, error: sessionError } = await supabase
           .from("game_sessions")
-          .select("id, campaign_id, venue_id, status, expires_at, campaigns!inner(status, start_at, end_at, commercial_rules), venues!inner(active)")
+          .select("id, campaign_id, venue_id, status, expires_at, customer_id, campaigns!inner(status, start_at, end_at, commercial_rules), venues!inner(active)")
           .eq("id", sessionId)
           .maybeSingle();
 
@@ -73,53 +73,122 @@ export async function POST(request: Request) {
           const isVenueActive = Boolean(venue?.active);
 
           if (isCampaignActive && isSessionActive && isVenueActive) {
+            const now = new Date();
+            const campaignStart = campaign.start_at ? new Date(campaign.start_at) : null;
+            const campaignEnd = campaign.end_at ? new Date(campaign.end_at) : null;
+            const sessionExpires = session.expires_at ? new Date(session.expires_at) : null;
+
+            if (campaignStart && now < campaignStart) {
+              return NextResponse.json({ error: "Campaign has not started" }, { status: 400 });
+            }
+            if (campaignEnd && now > campaignEnd) {
+              return NextResponse.json({ error: "Campaign has ended" }, { status: 400 });
+            }
+            if (sessionExpires && now > sessionExpires) {
+              return NextResponse.json({ error: "Session expired" }, { status: 400 });
+            }
+
             const [{ data: symbols }, { data: rewards }] = await Promise.all([
               supabase.from("symbols").select("name").eq("campaign_id", session.campaign_id).eq("active", true),
               supabase.from("rewards").select("id, name, reward_type, discount_value, eligible_product, probability_config, tier").eq("campaign_id", session.campaign_id).eq("active", true),
             ]);
 
-            if (symbols && symbols.length >= 5 && rewards && rewards.length > 0) {
-              const reward = chooseReward(rewards as Reward[]);
-              if (reward) {
-                const symbolNames = symbols.map((s: { name: string }) => s.name);
-                const result = [
-                  symbolNames[randomInt(symbolNames.length)],
-                  symbolNames[randomInt(symbolNames.length)],
-                  symbolNames[randomInt(symbolNames.length)],
-                ];
-
-                const outcome = drawOutcomeFromHierarchy();
-                const coupon = await recordProductionSpinAndCoupon({
-                  sessionId,
-                  outcome,
-                  venueId: session.venue_id,
-                });
-
-                return NextResponse.json({
-                  result_1: result[0],
-                  result_2: result[1],
-                  result_3: result[2],
-                  tier: coupon.tier,
-                  bottle_discount: coupon.bottleDiscount,
-                  shot_discount: coupon.shotDiscount,
-                  coupon: {
-                    code: coupon.code,
-                    coupon_id: coupon.code,
-                    eligible_product: "SAGO Bottles & Signature Pours",
-                    expires_at: `Valid until ${new Date(coupon.expiresAt).toLocaleDateString("en-ZM", { year: "numeric", month: "short", day: "numeric" })}`,
-                    qr_url: coupon.qrUrl,
-                    reward: coupon.reward,
-                    tier: coupon.tier,
-                    bottle_discount: coupon.bottleDiscount,
-                    shot_discount: coupon.shotDiscount,
-                    venue_name: coupon.venueName,
-                    venue_address: coupon.venueAddress,
-                    venue_city: coupon.venueCity,
-                  },
-                  is_demo: false,
-                });
-              }
+            if (!symbols || symbols.length < 5 || !rewards || rewards.length === 0) {
+              return NextResponse.json({ error: "Campaign not fully configured" }, { status: 500 });
             }
+
+            const reward = chooseReward(rewards as Reward[]);
+            if (!reward) {
+              return NextResponse.json({ error: "No eligible rewards" }, { status: 500 });
+            }
+
+            const maxPlays = campaign.commercial_rules?.max_plays_per_session ?? 3;
+
+            // Check HMAC config before any DB writes
+            const securitySecret = process.env.COUPON_HMAC_SECRET;
+            if (!securitySecret) {
+              console.error("[SpinAPI] COUPON_HMAC_SECRET not set");
+              return NextResponse.json({ error: "Coupon signing not configured" }, { status: 500 });
+            }
+
+            const symbolNames = symbols.map((s: { name: string }) => s.name);
+            const reels = [
+              symbolNames[randomInt(symbolNames.length)],
+              symbolNames[randomInt(symbolNames.length)],
+              symbolNames[randomInt(symbolNames.length)],
+            ];
+
+            const rewardTier = (reward.tier as "HIGH" | "MID+" | "MID" | "LOW+" | "LOW") || "LOW";
+            const bottleDiscount = typeof reward.discount_value === "number" ? reward.discount_value : 0;
+            const shotDiscount = bottleDiscount + 5;
+
+            // Invoke transactional database function to atomically claim play, record spin, and issue coupon
+            const { data: rpcResult, error: rpcError } = await supabase.rpc("spin_and_issue_coupon", {
+              p_session_id: sessionId,
+              p_campaign_id: session.campaign_id,
+              p_venue_id: session.venue_id,
+              p_customer_id: session.customer_id,
+              p_reward_id: reward.id,
+              p_reels: reels,
+              p_reward_tier: rewardTier,
+              p_bottle_discount: bottleDiscount,
+              p_shot_discount: shotDiscount,
+              p_reward_name: reward.name,
+              p_max_plays: maxPlays,
+            });
+
+            if (rpcError) {
+              console.error("[SpinAPI] RPC spin_and_issue_coupon failed:", rpcError);
+              const msg = rpcError.message || "Spin processing failed";
+              if (msg.includes("play limit") || msg.includes("max_plays")) {
+                return NextResponse.json({ error: "Session play limit reached" }, { status: 400 });
+              }
+              if (msg.includes("not found") || msg.includes("invalid session")) {
+                return NextResponse.json({ error: "Session not found" }, { status: 404 });
+              }
+              if (msg.includes("expired")) {
+                return NextResponse.json({ error: "Session expired" }, { status: 400 });
+              }
+              return NextResponse.json({ error: "Failed to process spin" }, { status: 500 });
+            }
+
+            if (!rpcResult) {
+              return NextResponse.json({ error: "No result from spin function" }, { status: 500 });
+            }
+
+            const { spin_id: spinId, coupon_code: couponCode, coupon_qr_data: qrData, coupon_qr_url: qrUrl, coupon_expires_at: couponExpiresAt } = rpcResult;
+
+            const { data: venueData } = await supabase
+              .from("venues")
+              .select("id, name, city, address")
+              .eq("id", session.venue_id)
+              .maybeSingle();
+
+            const expiresAt = couponExpiresAt ? new Date(couponExpiresAt) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+
+            return NextResponse.json({
+              result_1: reels[0],
+              result_2: reels[1],
+              result_3: reels[2],
+              tier: rewardTier,
+              bottle_discount: bottleDiscount,
+              shot_discount: shotDiscount,
+              coupon: {
+                code: couponCode,
+                coupon_id: couponCode,
+                eligible_product: reward.eligible_product || "SAGO Bottles & Signature Pours",
+                expires_at: `Valid until ${expiresAt.toLocaleDateString("en-ZM", { year: "numeric", month: "short", day: "numeric" })}`,
+                qr_url: qrUrl,
+                reward: reward.name,
+                tier: rewardTier,
+                bottle_discount: bottleDiscount,
+                shot_discount: shotDiscount,
+                venue_name: venueData?.name || "SAGO Partner",
+                venue_address: venueData?.address || "",
+                venue_city: venueData?.city || "Zambia",
+              },
+              is_demo: false,
+            });
           }
         }
       } catch (err) {
@@ -134,13 +203,28 @@ export async function POST(request: Request) {
 
     // 2. Fetch session details if available, and record spin + issue cryptographically signed coupon
     const existingSession = getProductionSession(sessionId);
-    const resolvedVenueId = existingSession?.venueId || venueId;
+    if (!existingSession) {
+      return NextResponse.json({ error: "Session not found" }, { status: 404 });
+    }
+    const resolvedVenueId = existingSession.venueId || venueId;
 
-    const coupon = await recordProductionSpinAndCoupon({
-      sessionId,
-      outcome,
-      venueId: resolvedVenueId,
-    });
+    let coupon: Awaited<ReturnType<typeof recordProductionSpinAndCoupon>>;
+    try {
+      coupon = await recordProductionSpinAndCoupon({
+        sessionId,
+        outcome,
+        venueId: resolvedVenueId,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Spin processing failed";
+      if (msg === "Session not found") {
+        return NextResponse.json({ error: msg }, { status: 404 });
+      }
+      if (msg === "Session is not active" || msg === "Session expired" || msg === "Session play limit reached") {
+        return NextResponse.json({ error: msg }, { status: 400 });
+      }
+      throw err;
+    }
 
     return NextResponse.json({
       result_1: combo[0],

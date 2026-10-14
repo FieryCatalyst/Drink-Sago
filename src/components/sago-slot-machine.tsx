@@ -143,7 +143,7 @@ export default function SagoSlotMachine() {
   const [selectedVenueName, setSelectedVenueName] = useState(
     `${SAGO_ZAMBIA_VENUES[0].name} · ${SAGO_ZAMBIA_VENUES[0].city}`
   );
-  const [marketingConsent, setMarketingConsent] = useState(true);
+  const [marketingConsent, setMarketingConsent] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [sessionId, setSessionId] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
@@ -236,23 +236,59 @@ export default function SagoSlotMachine() {
     }
   };
 
-  const handleVenueChange = (id: string) => {
-    setVenueId(id);
+  const handleVenueChange = async (id: string) => {
     const found = venues.find((v) => v.id === id);
-    if (found) {
-      const venueLabel = `${found.name} · ${found.city}`;
-      setSelectedVenueName(venueLabel);
-      try {
-        const saved = localStorage.getItem("sago_game_session");
-        if (saved) {
-          const parsed = JSON.parse(saved);
+    if (!found) return;
+
+    const venueLabel = `${found.name} · ${found.city}`;
+    setVenueId(id);
+    setSelectedVenueName(venueLabel);
+
+    try {
+      const saved = localStorage.getItem("sago_game_session");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.session_id && parsed?.name && parsed?.email) {
+          const response = await fetch("/api/game/session", {
+            body: JSON.stringify({
+              email: parsed.email,
+              marketing_consent: parsed.marketing_consent ?? false,
+              name: parsed.name,
+              venue_id: id,
+            }),
+            headers: { "Content-Type": "application/json" },
+            method: "POST",
+          });
+
+          if (response.ok) {
+            const session = (await response.json()) as { session_id?: string; venue?: Venue };
+            if (session.session_id) {
+              setSessionId(session.session_id);
+              if (session.venue) {
+                setSelectedVenueName(`${session.venue.name} · ${session.venue.city}`);
+              }
+              localStorage.setItem(
+                "sago_game_session",
+                JSON.stringify({
+                  session_id: session.session_id,
+                  venue_id: id,
+                  venue_name: venueLabel,
+                  country,
+                  name: parsed.name,
+                  email: parsed.email,
+                  marketing_consent: parsed.marketing_consent ?? false,
+                })
+              );
+            }
+          }
+        } else {
           parsed.venue_id = id;
           parsed.venue_name = venueLabel;
           localStorage.setItem("sago_game_session", JSON.stringify(parsed));
         }
-      } catch {
-        // Ignore storage restrictions
       }
+    } catch {
+      // Ignore storage/network restrictions
     }
   };
 
@@ -419,7 +455,7 @@ export default function SagoSlotMachine() {
         setMessage("Your spirit is waiting. Spin again.");
       }, 2000);
     }
-  }, [isSpinning, sessionId]);
+  }, [isSpinning, sessionId, venueId, selectedVenueName]);
 
   const handleLeverPull = () => {
     if (isSpinning) return;

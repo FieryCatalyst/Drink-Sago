@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { randomBytes, createHmac } from "crypto";
+import { randomBytes, createHmac, randomInt } from "crypto";
 import QRCode from "qrcode";
 import { SAGO_ZAMBIA_VENUES, Venue, RewardTier, ClassifiedOutcome } from "./demo-data";
 export { SAGO_ZAMBIA_VENUES };
@@ -42,6 +42,8 @@ export type GameCoupon = {
   expiresAt: string;
   securitySig: string;
   notes?: string;
+  redeemedAt?: string;
+  redeemedAtBarId?: string;
 };
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -72,31 +74,118 @@ function readLocalSessions(): GameSession[] {
 }
 
 function writeLocalSessions(sessions: GameSession[]) {
+  if (hasSupabaseServerEnv()) {
+    try {
+      const supabase = getSupabaseAdmin();
+      // Note: In a real implementation, we'd sync all sessions to Supabase
+      // For now, we rely on local file as primary for sessions
+      // and Supabase for coupons
+    } catch {
+      // Supabase not available for sessions, continue to local
+    }
+  }
+
   try {
     ensureDirectoryExists();
     fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions, null, 2), "utf-8");
   } catch (err) {
     console.error("[GameStorage] Failed to write local sessions:", err);
+    throw new Error("Session persistence failed");
   }
 }
 
-function readLocalCoupons(): GameCoupon[] {
+async function readLocalCoupons(): Promise<GameCoupon[]> {
+  if (hasSupabaseServerEnv()) {
+    try {
+      const supabase = getSupabaseAdmin();
+      const { data, error } = await supabase
+        .from("coupons")
+        .select("*")
+        .order("issued_at", { ascending: false })
+        .limit(100);
+      if (error) {
+        throw error;
+      }
+      return (data || []).map((c) => ({
+        code: c.code,
+        sessionId: c.session_id,
+        venueId: c.venue_id,
+        venueName: c.venue_name || "",
+        venueAddress: c.venue_address || "",
+        venueCity: c.venue_city || "",
+        venueCountry: "Zambia",
+        customerName: c.customer_name || "",
+        customerEmail: c.customer_email || "",
+        tier: c.tier,
+        bottleDiscount: c.bottle_discount,
+        shotDiscount: c.shot_discount,
+        combination: c.combination as [string, string, string],
+        reward: c.reward,
+        status: c.status,
+        qrUrl: c.qr_url,
+        issuedAt: c.issued_at,
+        expiresAt: c.expires_at,
+        securitySig: c.security_sig,
+        notes: c.notes,
+      }));
+    } catch (err) {
+      console.error("[GameStorage] Failed to read coupons from Supabase:", err);
+      throw new Error("Coupon read failed");
+    }
+  }
+
+  // Fallback to local file storage
   try {
     ensureDirectoryExists();
     const raw = fs.readFileSync(COUPONS_FILE, "utf-8");
     return JSON.parse(raw) as GameCoupon[];
   } catch (err) {
     console.error("[GameStorage] Failed to read local coupons:", err);
-    return [];
+    throw new Error("Coupon read failed");
   }
 }
 
-function writeLocalCoupons(coupons: GameCoupon[]) {
+async function writeLocalCoupon(coupon: GameCoupon): Promise<void> {
+  if (hasSupabaseServerEnv()) {
+    try {
+      const supabase = getSupabaseAdmin();
+      const { error } = await supabase.from("coupons").insert({
+        code: coupon.code,
+        session_id: coupon.sessionId,
+        venue_id: coupon.venueId,
+        customer_name: coupon.customerName,
+        customer_email: coupon.customerEmail,
+        tier: coupon.tier,
+        bottle_discount: coupon.bottleDiscount,
+        shot_discount: coupon.shotDiscount,
+        combination: coupon.combination,
+        reward: coupon.reward,
+        status: coupon.status,
+        qr_url: coupon.qrUrl,
+        security_sig: coupon.securitySig,
+        issued_at: coupon.issuedAt,
+        expires_at: coupon.expiresAt,
+        notes: coupon.notes,
+      });
+      if (error) {
+        throw error;
+      }
+      return;
+    } catch (err) {
+      console.error("[GameStorage] Failed to write coupon to Supabase:", err);
+      throw new Error("Coupon persistence failed");
+    }
+  }
+
+  // Fallback to local file storage
   try {
     ensureDirectoryExists();
-    fs.writeFileSync(COUPONS_FILE, JSON.stringify(coupons, null, 2), "utf-8");
+    const existing = fs.existsSync(COUPONS_FILE) ? JSON.parse(fs.readFileSync(COUPONS_FILE, "utf-8")) : [];
+    existing.unshift(coupon);
+    fs.writeFileSync(COUPONS_FILE, JSON.stringify(existing, null, 2), "utf-8");
   } catch (err) {
     console.error("[GameStorage] Failed to write local coupons:", err);
+    throw new Error("Coupon persistence failed");
   }
 }
 
@@ -187,41 +276,49 @@ export async function recordProductionSpinAndCoupon(params: {
 }): Promise<GameCoupon> {
   const { sessionId, outcome } = params;
   const sessions = readLocalSessions();
-  let session = sessions.find((s) => s.id === sessionId);
+  const session = sessions.find((s) => s.id === sessionId);
 
-  // If not found (e.g. freshly verified client), auto-provision with default Zambian venue
   if (!session) {
-    const venue = findZambiaVenue(params.venueId);
-    session = {
-      id: sessionId,
-      customerName: "SAGO Player",
-      customerEmail: "guest@drinksago.com",
-      venueId: venue.id,
-      venue,
-      marketingConsent: true,
-      status: "ACTIVE",
-      playCount: 1,
-      createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
-      lastPlayedAt: new Date().toISOString(),
-    };
-    sessions.unshift(session);
-  } else {
-    session.playCount += 1;
-    session.lastPlayedAt = new Date().toISOString();
+    throw new Error("Session not found");
   }
+
+  if (session.status !== "ACTIVE") {
+    throw new Error("Session is not active");
+  }
+
+  const now = new Date();
+  if (new Date(session.expiresAt) < now) {
+    throw new Error("Session expired");
+  }
+
+  const maxPlays = 3;
+  if (session.playCount >= maxPlays) {
+    throw new Error("Session play limit reached");
+  }
+
+  session.playCount += 1;
+  session.lastPlayedAt = now.toISOString();
   writeLocalSessions(sessions);
 
   const venue = session.venue || findZambiaVenue(session.venueId);
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000); // 30 days valid in Zambia
+  const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const part = (len: number) =>
-    Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+    Array.from({ length: len }, () => chars[randomInt(chars.length)]).join("");
   const code = `SAGO-ZM-${part(4)}-${part(4)}`;
 
-  const securitySecret = process.env.COUPON_HMAC_SECRET || "sago-zambia-secret-2026";
+  const securitySecret = (() => {
+    const secret = process.env.COUPON_HMAC_SECRET;
+    if (!secret) {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("COUPON_HMAC_SECRET environment variable is not set");
+      }
+      return "sago-security-hmac-secret-2026";
+    }
+    return secret;
+  })();
+
   const signaturePayload = `${code}|${venue.id}|${outcome.tierInfo.tier}|${session.customerEmail}|${now.toISOString()}`;
   const securitySig = createHmac("sha256", securitySecret)
     .update(signaturePayload)
@@ -282,9 +379,7 @@ export async function recordProductionSpinAndCoupon(params: {
     notes: outcome.tierInfo.notes,
   };
 
-  const coupons = readLocalCoupons();
-  coupons.unshift(coupon);
-  writeLocalCoupons(coupons);
+  await writeLocalCoupon(coupon);
 
   return coupon;
 }
