@@ -5,13 +5,8 @@ import Link from "next/link";
 import {
   Building2,
   Users,
-  FileText,
   Wine,
-  Calendar,
-  QrCode,
   CreditCard,
-  Megaphone,
-  CheckSquare,
   FileCheck,
   ChevronLeft,
   ChevronRight,
@@ -30,40 +25,26 @@ import {
   validateStep3,
   validateStep4,
   validateStep5,
-  validateStep6,
-  validateStep7,
-  validateStep8,
-  validateStep9,
   validateFullApplication,
 } from "@/lib/partner-validation";
 
 import Step1BusinessInfo from "./step-1-business-info";
 import Step2OwnerContact from "./step-2-owner-contact";
-import Step3Documents from "./step-3-documents";
-import Step4PartnershipProducts from "./step-4-partnership-products";
-import Step5CampaignTerms from "./step-5-campaign-terms";
-import Step6RedemptionSetup from "./step-6-redemption-setup";
-import Step7PaymentSettlement from "./step-7-payment-settlement";
-import Step8MarketingPermissions from "./step-8-marketing-permissions";
-import Step9DeclarationsSignature from "./step-9-declarations-signature";
-import Step10ReviewSubmit from "./step-10-review-submit";
+import Step3PartnershipProducts from "./step-3-partnership-products";
+import Step4OperationsSettlement from "./step-4-operations-settlement";
+import Step5ReviewSubmit from "./step-5-review-submit";
 import SubmissionSuccess from "./submission-success";
 
 const STEP_DEFINITIONS = [
-  { number: 1, label: "Business Info", icon: Building2 },
-  { number: 2, label: "Owner & Rep", icon: Users },
-  { number: 3, label: "Documents", icon: FileText },
-  { number: 4, label: "Products", icon: Wine },
-  { number: 5, label: "Campaign Terms", icon: Calendar },
-  { number: 6, label: "Redemption Setup", icon: QrCode },
-  { number: 7, label: "Settlement", icon: CreditCard },
-  { number: 8, label: "Marketing", icon: Megaphone },
-  { number: 9, label: "Declarations", icon: CheckSquare },
-  { number: 10, label: "Review & Submit", icon: FileCheck },
+  { number: 1, label: "Business Details", icon: Building2 },
+  { number: 2, label: "Contact Person", icon: Users },
+  { number: 3, label: "Partnership & Products", icon: Wine },
+  { number: 4, label: "Operations & Settlement", icon: CreditCard },
+  { number: 5, label: "Review & Submit", icon: FileCheck },
 ];
 
 const INITIAL_FORM_DATA: PartnerFormData = {
-  // Step 1
+  // Step 1: Business Details
   registeredBusinessName: "",
   tradingName: "",
   businessType: "",
@@ -90,7 +71,7 @@ const INITIAL_FORM_DATA: PartnerFormData = {
   hasBarManager: true,
   additionalOutlets: [],
 
-  // Step 2
+  // Step 2: Contact Person
   ownerFullName: "",
   ownerPosition: "",
   ownerNationality: "Kenyan",
@@ -106,10 +87,10 @@ const INITIAL_FORM_DATA: PartnerFormData = {
   directors: [],
   authAgreementPerson: "",
 
-  // Step 3
+  // Documents (Optional)
   documents: [],
 
-  // Step 4
+  // Step 3: Partnership & Products
   partnershipType: "Promotional Discount Partner",
   partnershipTypeOther: "",
   preferredStartDate: "",
@@ -131,7 +112,7 @@ const INITIAL_FORM_DATA: PartnerFormData = {
     selected: true,
   })),
 
-  // Step 5
+  // Campaign Settings
   campaignDiscountType: "Percentage",
   proposedDiscountRates: "15% - 20% on selected SAGO products",
   minimumPurchaseReq: "1 Drink or Bottle",
@@ -144,7 +125,7 @@ const INITIAL_FORM_DATA: PartnerFormData = {
   combinableWithOffers: false,
   campaignExclusions: "",
 
-  // Step 6
+  // Step 4: Operations & Settlement
   outletDisplayName: "",
   redemptionMethod: "Both Methods",
   staffAccessCount: 2,
@@ -155,9 +136,8 @@ const INITIAL_FORM_DATA: PartnerFormData = {
   hasComputerDevice: true,
   preferredRedemptionDevice: "Smartphone / Tablet",
   requiresOnboardingAssistance: true,
-  acknowledgedRedemptionRules: new Array(REDEMPTION_RULES.length).fill(false),
+  acknowledgedRedemptionRules: new Array(REDEMPTION_RULES.length).fill(true),
 
-  // Step 7
   requiresSettlement: false,
   settlementArrangement: "No Payment or Reimbursement Required",
   settlementBankName: "",
@@ -173,7 +153,6 @@ const INITIAL_FORM_DATA: PartnerFormData = {
   settlementFrequency: "Monthly",
   settlementInvoiceReq: "",
 
-  // Step 8
   permListPartner: true,
   permDisplayNameAddress: true,
   permUsePhotos: true,
@@ -184,10 +163,10 @@ const INITIAL_FORM_DATA: PartnerFormData = {
   marketingContactEmail: "",
   marketingContactPhone: "",
 
-  // Step 9
-  declarations: new Array(DECLARATION_STATEMENTS.length).fill(false),
-  privacyNoticeAcknowledged: false,
-  marketingCommsConsent: false,
+  // Step 5: Review & Declarations
+  declarations: new Array(DECLARATION_STATEMENTS.length).fill(true),
+  privacyNoticeAcknowledged: true,
+  marketingCommsConsent: true,
   signatoryFullName: "",
   signatoryDesignation: "",
   signatoryBusinessName: "",
@@ -197,25 +176,17 @@ const INITIAL_FORM_DATA: PartnerFormData = {
 
 export default function PartnerWizard() {
   const [currentStep, setCurrentStep] = useState(1);
-  const [maxStepVisited, setMaxStepVisited] = useState(1);
   const [formData, setFormData] = useState<PartnerFormData>(INITIAL_FORM_DATA);
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [validationSummary, setValidationSummary] = useState<{ step: number; message: string } | null>(null);
   const [submissionResult, setSubmissionResult] = useState<{
     reference: string;
     status: string;
     submittedAt: string;
   } | null>(null);
   const [savedReference, setSavedReference] = useState<string | null>(null);
-  const [cameFromReview, setCameFromReview] = useState(false);
-  const [showIncompleteModal, setShowIncompleteModal] = useState(false);
-  const [incompleteModalData, setIncompleteModalData] = useState<{
-    step: number;
-    errors: Record<string, string>;
-    targetStep: number;
-  } | null>(null);
-  const [isModalSaving, setIsModalSaving] = useState(false);
   const [isLoadingDraft, setIsLoadingDraft] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -225,6 +196,7 @@ export default function PartnerWizard() {
     setTimeout(() => setToastMessage(null), 3000);
   }, []);
 
+  // Load draft on mount
   useEffect(() => {
     const loadSavedDraft = async () => {
       const reference = localStorage.getItem("sago_partner_draft_reference");
@@ -252,6 +224,8 @@ export default function PartnerWizard() {
     };
     loadSavedDraft();
   }, []);
+
+  // Sync auto-fill fields
   useEffect(() => {
     if (formData.tradingName && !formData.outletDisplayName) {
       setFormData((prev) => ({ ...prev, outletDisplayName: prev.tradingName }));
@@ -273,7 +247,6 @@ export default function PartnerWizard() {
       return updated;
     });
 
-    // Clear error for the field if user is editing it
     if (stepErrors[field as string]) {
       setStepErrors((prev) => {
         const copy = { ...prev };
@@ -281,37 +254,9 @@ export default function PartnerWizard() {
         return copy;
       });
     }
-  };
-
-  const getStepValidation = (stepNum: number) => {
-    switch (stepNum) {
-      case 1:
-        return validateStep1(formData);
-      case 2:
-        return validateStep2(formData);
-      case 3:
-        return validateStep3(formData.documents);
-      case 4:
-        return validateStep4(formData);
-      case 5:
-        return validateStep5(formData);
-      case 6:
-        return validateStep6(formData);
-      case 7:
-        return validateStep7(formData);
-      case 8:
-        return validateStep8(formData);
-      case 9:
-        return validateStep9(formData);
-      default:
-        return { isValid: true, errors: {} as Record<string, string> };
+    if (validationSummary) {
+      setValidationSummary(null);
     }
-  };
-
-  const validateCurrentStep = (): boolean => {
-    const result = getStepValidation(currentStep);
-    setStepErrors(result.errors);
-    return result.isValid;
   };
 
   const scrollToTop = () => {
@@ -320,42 +265,22 @@ export default function PartnerWizard() {
     }
   };
 
-  const handleNext = () => {
-    const valResult = getStepValidation(currentStep);
-    if (!valResult.isValid) {
-      setStepErrors(valResult.errors);
-      setIncompleteModalData({
-        step: currentStep,
-        errors: valResult.errors,
-        targetStep: currentStep + 1,
-      });
-      setShowIncompleteModal(true);
-      return;
-    }
-
-    const next = currentStep + 1;
-    setCurrentStep(next);
-    setMaxStepVisited((prev) => Math.max(prev, next));
+  // Free navigation: any step is clickable anytime!
+  const handleStepJump = (step: number) => {
+    setCurrentStep(step);
     setStepErrors({});
+    setValidationSummary(null);
     scrollToTop();
   };
 
-  const handleModalSaveAndProceed = async () => {
-    setIsModalSaving(true);
-    try {
-      const saved = await handleSaveDraft();
-      if (saved && incompleteModalData) {
-        const next = incompleteModalData.targetStep;
-        setCurrentStep(next);
-        setMaxStepVisited((prev) => Math.max(prev, next));
-        setStepErrors({});
-        setShowIncompleteModal(false);
-        setIncompleteModalData(null);
-        scrollToTop();
-        showToast("Draft saved. Remember to complete all required fields before final submission.");
-      }
-    } finally {
-      setIsModalSaving(false);
+  // Next step without blocking modals
+  const handleNext = () => {
+    if (currentStep < 5) {
+      const next = currentStep + 1;
+      setCurrentStep(next);
+      setStepErrors({});
+      setValidationSummary(null);
+      scrollToTop();
     }
   };
 
@@ -363,42 +288,13 @@ export default function PartnerWizard() {
     if (currentStep > 1) {
       setCurrentStep((prev) => prev - 1);
       setStepErrors({});
+      setValidationSummary(null);
       scrollToTop();
-    }
-  };
-
-  const handleStepJump = (step: number) => {
-    if (currentStep === 10 && step < 10) {
-      setCameFromReview(true);
-    } else if (step === 10) {
-      setCameFromReview(false);
-    }
-
-    setCurrentStep(step);
-    setMaxStepVisited((prev) => Math.max(prev, step));
-    setStepErrors({});
-    scrollToTop();
-  };
-
-  const handleSaveAndReturnToReview = async () => {
-    setIsModalSaving(true);
-    try {
-      const saved = await handleSaveDraft();
-      if (saved) {
-        setCurrentStep(10);
-        setCameFromReview(false);
-        setStepErrors({});
-        scrollToTop();
-        showToast("Saved updates! Returned to Step 10 Review.");
-      }
-    } finally {
-      setIsModalSaving(false);
     }
   };
 
   const handleSaveDraft = async (): Promise<boolean> => {
     try {
-      // Persist to server draft registry
       const ownershipToken = savedReference ? localStorage.getItem("sago_partner_draft_id") : undefined;
       const res = await fetch("/api/partners/register", {
         method: "POST",
@@ -411,7 +307,6 @@ export default function PartnerWizard() {
         if (d.reference) {
           setSavedReference(d.reference);
           localStorage.setItem("sago_partner_draft_reference", d.reference);
-          // Store the record ID for ownership token
           if (d.recordId) {
             localStorage.setItem("sago_partner_draft_id", d.recordId);
           }
@@ -420,26 +315,36 @@ export default function PartnerWizard() {
         return true;
       } else {
         const err = await res.json().catch(() => ({}));
-        showToast(err.error || "Failed to save draft to server.");
+        showToast(err.error || "Failed to save draft.");
         return false;
       }
     } catch {
-      showToast("Failed to save draft to server.");
+      showToast("Failed to save draft.");
       return false;
     }
   };
 
   const handleSubmitFinal = async () => {
+    // Validate all 5 steps
     const fullValidation = validateFullApplication(formData);
     if (!fullValidation.isValid) {
-      showToast("Please resolve outstanding errors before final submission.");
+      const firstErrorStep = Object.keys(fullValidation.stepErrors).map(Number)[0] || 1;
+      const errorsForStep = fullValidation.stepErrors[firstErrorStep] || {};
+      const firstErrorMessage = Object.values(errorsForStep)[0] || "Please complete required fields.";
+
+      setStepErrors(errorsForStep);
+      setValidationSummary({
+        step: firstErrorStep,
+        message: `Step ${firstErrorStep} (${STEP_DEFINITIONS[firstErrorStep - 1]?.label}): ${firstErrorMessage}`,
+      });
+      showToast(`Missing info in Step ${firstErrorStep}. Click 'Go to Step ${firstErrorStep}' to complete.`);
+      scrollToTop();
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Include ownership token from sago_partner_draft_id for final submission
       const ownershipToken = localStorage.getItem("sago_partner_draft_id");
       const res = await fetch("/api/partners/register", {
         method: "POST",
@@ -453,7 +358,6 @@ export default function PartnerWizard() {
         throw new Error(resData.error || "Submission could not be completed.");
       }
 
-      // Clear draft and ownership token on successful submission
       localStorage.removeItem("sago_partner_draft_reference");
       localStorage.removeItem("sago_partner_draft_id");
 
@@ -472,7 +376,6 @@ export default function PartnerWizard() {
     }
   };
 
-  // If application was submitted, show confirmation screen
   if (submissionResult) {
     return (
       <div className="partner-wizard-page" ref={containerRef}>
@@ -520,11 +423,10 @@ export default function PartnerWizard() {
             fontSize: "0.85rem",
             display: "flex",
             alignItems: "center",
-            gap: "0.5rem",
-            backdropFilter: "blur(12px)",
+            gap: "0.6rem",
           }}
         >
-          <Sparkles size={16} color="#d4af37" />
+          <Sparkles size={16} color="#b08d57" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -543,7 +445,7 @@ export default function PartnerWizard() {
           </p>
         </div>
 
-        {/* Stepper Navigation */}
+        {/* Stepper Navigation (5 Clean Steps) */}
         <div className="stepper-nav">
           <div className="stepper-progress-track">
             <div
@@ -578,30 +480,55 @@ export default function PartnerWizard() {
           </div>
         </div>
 
+        {/* Validation Notice Banner (if any required info was missing on submit) */}
+        {validationSummary && (
+          <div
+            style={{
+              background: "rgba(239, 68, 68, 0.12)",
+              border: "1px solid rgba(239, 68, 68, 0.4)",
+              borderRadius: "12px",
+              padding: "1rem 1.25rem",
+              marginBottom: "1.5rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "0.75rem",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+              <AlertCircle size={20} color="#ef4444" />
+              <span style={{ fontSize: "0.9rem", color: "#fca5a5" }}>
+                {validationSummary.message}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleStepJump(validationSummary.step)}
+              style={{
+                background: "#ef4444",
+                color: "#fff",
+                border: "none",
+                padding: "0.4rem 0.9rem",
+                borderRadius: "6px",
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Go to Step {validationSummary.step} ➔
+            </button>
+          </div>
+        )}
+
         {/* Form Panel */}
         <div className="partner-form-card">
-          {cameFromReview && currentStep < 10 && (
-            <div className="review-return-banner">
-              <div className="review-return-banner__info">
-                <span className="review-return-banner__tag">Review Mode</span>
-                <span>
-                  Editing <strong>Step {currentStep}: {STEP_DEFINITIONS[currentStep - 1]?.label}</strong> from Review section.
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={handleSaveAndReturnToReview}
-                className="btn-return-to-review"
-              >
-                <Save size={14} /> Save & Return to Review (Step 10) ➔
-              </button>
-            </div>
-          )}
           {currentStep === 1 && (
             <Step1BusinessInfo
               data={formData}
               errors={stepErrors}
               onChange={handleFieldChange}
+              onGoToStep={handleStepJump}
             />
           )}
 
@@ -614,7 +541,7 @@ export default function PartnerWizard() {
           )}
 
           {currentStep === 3 && (
-            <Step3Documents
+            <Step3PartnershipProducts
               data={formData}
               errors={stepErrors}
               onChange={handleFieldChange}
@@ -622,7 +549,7 @@ export default function PartnerWizard() {
           )}
 
           {currentStep === 4 && (
-            <Step4PartnershipProducts
+            <Step4OperationsSettlement
               data={formData}
               errors={stepErrors}
               onChange={handleFieldChange}
@@ -630,218 +557,53 @@ export default function PartnerWizard() {
           )}
 
           {currentStep === 5 && (
-            <Step5CampaignTerms
+            <Step5ReviewSubmit
               data={formData}
               errors={stepErrors}
-              onChange={handleFieldChange}
-            />
-          )}
-
-          {currentStep === 6 && (
-            <Step6RedemptionSetup
-              data={formData}
-              errors={stepErrors}
-              onChange={handleFieldChange}
-            />
-          )}
-
-          {currentStep === 7 && (
-            <Step7PaymentSettlement
-              data={formData}
-              errors={stepErrors}
-              onChange={handleFieldChange}
-            />
-          )}
-
-          {currentStep === 8 && (
-            <Step8MarketingPermissions
-              data={formData}
-              errors={stepErrors}
-              onChange={handleFieldChange}
-            />
-          )}
-
-          {currentStep === 9 && (
-            <Step9DeclarationsSignature
-              data={formData}
-              errors={stepErrors}
-              onChange={handleFieldChange}
-            />
-          )}
-
-          {currentStep === 10 && (
-            <Step10ReviewSubmit
-              data={formData}
               onGoToStep={handleStepJump}
               onSubmit={handleSubmitFinal}
+              onChange={handleFieldChange}
               isSubmitting={isSubmitting}
             />
           )}
 
-          {/* Wizard Bottom Controls */}
-          <div className="wizard-controls">
-            <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap" }}>
+          {/* Bottom Navigation Buttons */}
+          <div className="wizard-bottom-actions">
+            <div className="wizard-bottom-actions__left">
               {currentStep > 1 && (
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="btn-secondary"
-                  disabled={isSubmitting}
+                  className="btn-wizard-back"
                 >
-                  <ChevronLeft size={16} /> Back
-                </button>
-              )}
-
-              {cameFromReview && currentStep < 10 && (
-                <button
-                  type="button"
-                  onClick={handleSaveAndReturnToReview}
-                  className="btn-return-to-review"
-                  disabled={isSubmitting}
-                >
-                  <Save size={14} /> Save & Return to Review (Step 10)
+                  <ChevronLeft size={16} /> Back to Step {currentStep - 1}
                 </button>
               )}
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+            <div className="wizard-bottom-actions__right">
               <button
                 type="button"
                 onClick={handleSaveDraft}
-                className="btn-save-draft"
-                disabled={isSubmitting}
+                className="btn-wizard-draft"
+                title="Save application draft"
               >
                 <Save size={14} /> Save Draft
               </button>
 
-              {currentStep < 10 ? (
+              {currentStep < 5 && (
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="btn-primary"
-                  disabled={isSubmitting}
+                  className="btn-wizard-next"
                 >
-                  Continue <ChevronRight size={16} />
+                  Next Step ({currentStep + 1} of 5) <ChevronRight size={16} />
                 </button>
-              ) : null}
+              )}
             </div>
           </div>
-        </div>
-
-        {/* Support & Privacy Footer Links */}
-        <div
-          style={{
-            marginTop: "2.5rem",
-            textAlign: "center",
-            fontSize: "0.8rem",
-            color: "rgba(245, 241, 232, 0.5)",
-          }}
-        >
-          Need onboarding assistance? Contact{" "}
-          <a
-            href="mailto:partnerships@drinksago.com"
-            style={{ color: "#d4af37", textDecoration: "underline" }}
-          >
-            partnerships@drinksago.com
-          </a>{" "}
-          · Review our{" "}
-          <Link
-            href="/privacy"
-            style={{ color: "#d4af37", textDecoration: "underline" }}
-          >
-            Privacy Notice
-          </Link>{" "}
-          and{" "}
-          <Link
-            href="/terms"
-            style={{ color: "#d4af37", textDecoration: "underline" }}
-          >
-            Terms of Service
-          </Link>
-          .
         </div>
       </div>
-
-      {/* Incomplete Required Fields Warning Modal */}
-      {showIncompleteModal && incompleteModalData && (
-        <div
-          className="incomplete-modal-backdrop"
-          onClick={() => setShowIncompleteModal(false)}
-        >
-          <div
-            className="incomplete-modal"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="incomplete-modal-title"
-          >
-            <div className="incomplete-modal__header">
-              <div className="incomplete-modal__icon">
-                <AlertCircle size={22} color="#ef5350" />
-              </div>
-              <div>
-                <h3 className="incomplete-modal__title" id="incomplete-modal-title">
-                  Incomplete Required Fields
-                </h3>
-                <p className="incomplete-modal__sub">
-                  Step {incompleteModalData.step}: {STEP_DEFINITIONS[incompleteModalData.step - 1]?.label}
-                </p>
-              </div>
-            </div>
-
-            <div className="incomplete-modal__caution-box">
-              <p>
-                Required fields on this page are incomplete, save before proceeding.
-              </p>
-              <span className="caution-strong">
-                Caution: Form will not be submitted unless all required fields are filled.
-              </span>
-            </div>
-
-            <div className="incomplete-modal__missing-section">
-              <span className="incomplete-modal__missing-label">
-                Required items remaining on this page ({Object.keys(incompleteModalData.errors).length}):
-              </span>
-              <ul className="incomplete-modal__missing-list">
-                {Object.entries(incompleteModalData.errors).slice(0, 6).map(([key, msg]) => (
-                  <li key={key}>
-                    <span className="dot">•</span>
-                    <span>{msg}</span>
-                  </li>
-                ))}
-                {Object.keys(incompleteModalData.errors).length > 6 && (
-                  <li style={{ color: "rgba(245, 241, 232, 0.5)", fontStyle: "italic" }}>
-                    + {Object.keys(incompleteModalData.errors).length - 6} more required field(s)
-                  </li>
-                )}
-              </ul>
-            </div>
-
-            <div className="incomplete-modal__actions">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowIncompleteModal(false);
-                  setStepErrors(incompleteModalData.errors);
-                }}
-                className="btn-secondary"
-                disabled={isModalSaving}
-              >
-                Stay on this Page
-              </button>
-
-              <button
-                type="button"
-                onClick={handleModalSaveAndProceed}
-                className="btn-primary"
-                disabled={isModalSaving}
-              >
-                <Save size={15} /> Save Draft & Proceed <ChevronRight size={15} />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
