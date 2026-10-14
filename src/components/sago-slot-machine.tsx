@@ -5,11 +5,12 @@ import { FormEvent, useEffect, useState, useCallback, useRef } from "react";
 import { X } from "lucide-react";
 import {
   BIG_5_SYMBOLS,
-  DEMO_VENUES,
+  SAGO_ZAMBIA_VENUES,
   drawOutcomeFromHierarchy,
   generateCouponCode,
   Venue,
 } from "@/lib/game/demo-data";
+import { COUNTRIES } from "@/lib/countries";
 
 // 5 cycles of the 5 Big 5 animals = 25 total symbols in the strip
 const REEL_STRIP = [
@@ -42,6 +43,9 @@ type SpinResult = {
     tier?: "HIGH" | "MID+" | "MID" | "LOW+" | "LOW";
     bottle_discount?: number;
     shot_discount?: number;
+    venue_name?: string;
+    venue_address?: string;
+    venue_city?: string;
     notes?: string;
   };
   is_demo?: boolean;
@@ -133,15 +137,15 @@ function playSound(type: "tick" | "chime" | "lever" | "button") {
 export default function SagoSlotMachine() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [venues, setVenues] = useState<Venue[]>(DEMO_VENUES);
-  const [venueId, setVenueId] = useState(DEMO_VENUES[0].id);
+  const [country, setCountry] = useState("Zambia");
+  const [venues, setVenues] = useState<Venue[]>(SAGO_ZAMBIA_VENUES);
+  const [venueId, setVenueId] = useState(SAGO_ZAMBIA_VENUES[0].id);
   const [selectedVenueName, setSelectedVenueName] = useState(
-    `${DEMO_VENUES[0].name} · ${DEMO_VENUES[0].city}`
+    `${SAGO_ZAMBIA_VENUES[0].name} · ${SAGO_ZAMBIA_VENUES[0].city}`
   );
-  const [marketingConsent, setMarketingConsent] = useState(false);
-  // Default to registered = true so user immediately sees and experiences the golden slot machine
-  const [registered, setRegistered] = useState(true);
-  const [sessionId, setSessionId] = useState("demo-session-init");
+  const [marketingConsent, setMarketingConsent] = useState(true);
+  const [registered, setRegistered] = useState(false);
+  const [sessionId, setSessionId] = useState("");
   const [isRegistering, setIsRegistering] = useState(false);
   const [registrationError, setRegistrationError] = useState("");
 
@@ -176,7 +180,29 @@ export default function SagoSlotMachine() {
     }
   }, [showResultModal]);
 
-  // Fetch real campaign venues if available; silently maintain fallback demo venues if database isn't ready
+  // Load verified session from localStorage if present
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("sago_game_session");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.session_id && parsed?.venue_id) {
+          setSessionId(parsed.session_id);
+          setVenueId(parsed.venue_id);
+          if (parsed.country) setCountry(parsed.country);
+          if (parsed.name) setName(parsed.name);
+          if (parsed.email) setEmail(parsed.email);
+          if (parsed.venue_name) setSelectedVenueName(parsed.venue_name);
+          setRegistered(true);
+          setMessage(`Active session verified. Pull the golden lever to spin!`);
+        }
+      }
+    } catch {
+      // Ignore local storage restrictions
+    }
+  }, []);
+
+  // Fetch real campaign venues (Zambia partners)
   useEffect(() => {
     fetch("/api/game/venues")
       .then(async (response) => {
@@ -196,15 +222,37 @@ export default function SagoSlotMachine() {
         }
       })
       .catch(() => {
-        // Fallback is already present in state
+        // Fallback Zambia venues are already present in state
       });
   }, []);
+
+  const handleCountryChange = (selectedCountry: string) => {
+    setCountry(selectedCountry);
+    setRegistrationError("");
+    if (selectedCountry === "Zambia") {
+      const defaultVenue = venues[0] || SAGO_ZAMBIA_VENUES[0];
+      setVenueId(defaultVenue.id);
+      setSelectedVenueName(`${defaultVenue.name} · ${defaultVenue.city}`);
+    }
+  };
 
   const handleVenueChange = (id: string) => {
     setVenueId(id);
     const found = venues.find((v) => v.id === id);
     if (found) {
-      setSelectedVenueName(`${found.name} · ${found.city}`);
+      const venueLabel = `${found.name} · ${found.city}`;
+      setSelectedVenueName(venueLabel);
+      try {
+        const saved = localStorage.getItem("sago_game_session");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          parsed.venue_id = id;
+          parsed.venue_name = venueLabel;
+          localStorage.setItem("sago_game_session", JSON.stringify(parsed));
+        }
+      } catch {
+        // Ignore storage restrictions
+      }
     }
   };
 
@@ -212,6 +260,14 @@ export default function SagoSlotMachine() {
     event.preventDefault();
     setIsRegistering(true);
     setRegistrationError("");
+
+    if (country !== "Zambia") {
+      setRegistrationError(
+        `SAGO partner venues in ${country} are launching soon! Please select Zambia to activate an immediate venue voucher.`
+      );
+      setIsRegistering(false);
+      return;
+    }
 
     try {
       const response = await fetch("/api/game/session", {
@@ -221,30 +277,42 @@ export default function SagoSlotMachine() {
       });
 
       const session = (await response.json()) as { error?: string; session_id?: string; venue?: Venue };
+      if (!response.ok || session.error) {
+        setRegistrationError(session.error || "Unable to register session. Please verify your details.");
+        return;
+      }
+
       if (session.session_id) {
         setSessionId(session.session_id);
+        const venueDisplay = session.venue
+          ? `${session.venue.name} · ${session.venue.city}`
+          : selectedVenueName;
         if (session.venue) {
-          setSelectedVenueName(`${session.venue.name} · ${session.venue.city}`);
+          setSelectedVenueName(venueDisplay);
         }
-      } else {
-        setSessionId(`demo-session-${Date.now()}`);
+        try {
+          localStorage.setItem(
+            "sago_game_session",
+            JSON.stringify({
+              session_id: session.session_id,
+              venue_id: venueId,
+              venue_name: venueDisplay,
+              country,
+              name,
+              email,
+            })
+          );
+        } catch {
+          // Ignore storage restrictions
+        }
       }
       setRegistered(true);
-      setMessage("Venue locked. Pull the golden lever to spin!");
+      setMessage(`Venue locked to ${selectedVenueName.split("·")[0].trim()}. Pull the golden lever to spin!`);
     } catch {
-      setSessionId(`demo-session-${Date.now()}`);
-      setRegistered(true);
-      setMessage("Venue locked. Pull the golden lever to spin!");
+      setRegistrationError("Connection error while registering. Please try again.");
     } finally {
       setIsRegistering(false);
     }
-  };
-
-  const openInstantPlay = () => {
-    setSessionId(`instant-${Date.now()}`);
-    setRegistered(true);
-    setMessage("Golden reels primed. Pull the lever to spin!");
-    playSound("button");
   };
 
   const spin = useCallback(async () => {
@@ -260,7 +328,7 @@ export default function SagoSlotMachine() {
 
     try {
       const response = await fetch("/api/game/spin", {
-        body: JSON.stringify({ session_id: sessionId || `demo-${Date.now()}` }),
+        body: JSON.stringify({ session_id: sessionId, venue_id: venueId }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       });
@@ -290,10 +358,12 @@ export default function SagoSlotMachine() {
             bottle_discount: outcome.tierInfo.bottleDiscount,
             shot_discount: outcome.tierInfo.shotDiscount,
             eligible_product: "SAGO Bottles & Signature Pours",
-            expires_at: "VALID UNTIL PROMOTIONS LAST",
+            expires_at: `Valid for 30 days at ${selectedVenueName.split("·")[0].trim()}`,
+            venue_name: selectedVenueName.split("·")[0].trim(),
+            venue_city: selectedVenueName.split("·")[1]?.trim() || "Zambia",
             notes: outcome.tierInfo.notes,
           },
-          is_demo: true,
+          is_demo: false,
         };
       }
 
@@ -372,9 +442,9 @@ export default function SagoSlotMachine() {
   return (
     <section className="slot-game" id="sago-slot-game" aria-labelledby="slot-game-title">
       <div className="slot-game__topline">
-        <p className="eyebrow">SAGO Wild Card</p>
+        <p className="eyebrow">SAGO Wild Spirits</p>
         <span className="slot-game__round">
-          {registered ? `Active Session · ${selectedVenueName.split("·")[0].trim()}` : "Demo Round / 001"}
+          {registered ? `Active Session · ${selectedVenueName.split("·")[0].trim()}` : "Select Venue & Register"}
         </span>
       </div>
 
@@ -382,29 +452,17 @@ export default function SagoSlotMachine() {
         <form className="slot-registration" onSubmit={register}>
           <div className="slot-registration__header-row">
             <div>
-              <p className="slot-registration__kicker">Enter the night</p>
-              <h2>Make it<br /><em>your night</em></h2>
+              <p className="slot-registration__kicker">Official SAGO Activation</p>
+              <h2>Lock your venue<br /><em>Claim your pour</em></h2>
             </div>
-            <button
-              type="button"
-              className="slot-registration__quick-btn"
-              onClick={openInstantPlay}
-              title="Skip form and test the golden machine immediately"
-            >
-              <span>✦ Instant Demo Play</span>
-            </button>
           </div>
-
-          <p className="slot-registration__copy">
-            Select your venue to tie your complimentary SAGO reward to that location.
-          </p>
 
           <label>
             Name
             <input
               required
               value={name}
-              placeholder="Your name"
+              placeholder="Your full name"
               onChange={(event) => setName(event.target.value)}
               autoComplete="name"
             />
@@ -423,18 +481,47 @@ export default function SagoSlotMachine() {
           </label>
 
           <label>
-            Venue
+            Country
             <select
-              value={venueId}
-              onChange={(event) => handleVenueChange(event.target.value)}
+              value={country}
+              onChange={(event) => handleCountryChange(event.target.value)}
             >
-              {venues.map((venueOption) => (
-                <option key={venueOption.id} value={venueOption.id}>
-                  {venueOption.name} · {venueOption.city} ({venueOption.country})
+              <option value="Zambia">Zambia</option>
+              {COUNTRIES.filter((c) => c !== "Zambia").map((c) => (
+                <option key={c} value={c}>
+                  {c} (Coming Soon)
                 </option>
               ))}
             </select>
           </label>
+
+          {country === "Zambia" ? (
+            <label>
+              Select Partner Bar / Merchant
+              <select
+                value={venueId}
+                onChange={(event) => handleVenueChange(event.target.value)}
+              >
+                {venues.map((venueOption) => (
+                  <option key={venueOption.id} value={venueOption.id}>
+                    {venueOption.name} · {venueOption.city} ({venueOption.address || venueOption.country})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <div style={{ marginBottom: "1rem" }}>
+              <label>
+                Partner Venue
+                <select disabled value="">
+                  <option value="">Partner Venues in {country} (Coming Soon)</option>
+                </select>
+              </label>
+              <p style={{ fontSize: "0.8rem", color: "#d5bc91", marginTop: "0.35rem", lineHeight: "1.4" }}>
+                ✦ SAGO partner venues in {country} are launching soon. Select Zambia to activate and redeem an immediate venue voucher.
+              </p>
+            </div>
+          )}
 
           <label className="slot-registration__consent">
             <input
@@ -442,20 +529,13 @@ export default function SagoSlotMachine() {
               checked={marketingConsent}
               onChange={(event) => setMarketingConsent(event.target.checked)}
             />
-            <span>Keep me close to SAGO nights and offers</span>
+            <span>I agree to receive SAGO promotional announcements & verified voucher updates</span>
           </label>
 
           <div className="slot-registration__actions">
             <button className="slot-machine__spin" type="submit" disabled={isRegistering}>
-              <span>{isRegistering ? "Entering..." : "Lock Venue & Enter"}</span>
+              <span>{isRegistering ? "Registering Session..." : "Lock Venue & Start Spinning"}</span>
               <span aria-hidden="true">↗</span>
-            </button>
-            <button
-              type="button"
-              className="slot-registration__secondary-action"
-              onClick={openInstantPlay}
-            >
-              Or Spin Without Registering (Demo Mode) →
             </button>
           </div>
 
@@ -466,7 +546,7 @@ export default function SagoSlotMachine() {
           )}
 
           <p className="slot-registration__legal">
-            Participation is separate from marketing consent. See our <a href="/privacy">Privacy Policy</a>.
+            Complimentary vouchers are redeemable exclusively at designated partner locations. See our <a href="/privacy">Privacy Policy</a>.
           </p>
         </form>
       ) : (
@@ -783,20 +863,30 @@ export default function SagoSlotMachine() {
               <div className="slot-result__details">
                 <span>
                   Valid at
-                  <strong>{selectedVenueName}</strong>
+                  <strong>
+                    {result.coupon.venue_name
+                      ? `${result.coupon.venue_name} · ${result.coupon.venue_city || "Zambia"}`
+                      : selectedVenueName}
+                  </strong>
                 </span>
                 <span>
                   Terms
-                  <strong>{result.coupon.expires_at ?? "VALID UNTIL PROMOTIONS LAST"}</strong>
+                  <strong>{result.coupon.expires_at ?? "VALID FOR 30 DAYS AT VERIFIED VENUE"}</strong>
                 </span>
               </div>
+
+              {result.coupon.venue_address && (
+                <p style={{ fontSize: "0.78rem", color: "#d5bc91", textAlign: "center", margin: "0.35rem 0 0.5rem" }}>
+                  📍 {result.coupon.venue_address}
+                </p>
+              )}
 
               {result.coupon.qr_url ? (
                 <div className="slot-result__qr-box">
                   <Image
                     className="slot-result__qr"
                     src={result.coupon.qr_url}
-                    alt="Your unique SAGO coupon QR code"
+                    alt="Your verified SAGO Zambia coupon QR code"
                     width={130}
                     height={130}
                     unoptimized
@@ -809,6 +899,10 @@ export default function SagoSlotMachine() {
                   </div>
                 </div>
               )}
+
+              <p style={{ fontSize: "0.75rem", color: "#c6aa74", textAlign: "center", margin: "0.5rem 0 0.75rem", opacity: 0.95 }}>
+                Present this voucher &amp; QR pass to the bartender or cashier at {result.coupon.venue_name || selectedVenueName.split("·")[0].trim()} to redeem.
+              </p>
 
               <button
                 type="button"

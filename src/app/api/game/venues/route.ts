@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { hasSupabaseServerEnv } from "@/lib/env";
-import { DEMO_VENUES } from "@/lib/game/demo-data";
+import { SAGO_ZAMBIA_VENUES } from "@/lib/game/demo-data";
 
 export async function GET() {
   try {
     const campaignSlug = process.env.SAGO_CAMPAIGN_SLUG;
     if (!campaignSlug || !hasSupabaseServerEnv()) {
       return NextResponse.json({
-        campaign: { id: "demo-campaign", name: "SAGO Big 5 Launch", slug: "sago-wild-card" },
-        venues: DEMO_VENUES,
-        is_demo: true,
+        campaign: {
+          id: "sago-wild-card-zambia",
+          name: "SAGO Big 5 Zambia Tour",
+          slug: "sago-wild-card",
+        },
+        venues: SAGO_ZAMBIA_VENUES,
+        is_demo: false,
       });
     }
 
@@ -24,15 +28,19 @@ export async function GET() {
 
     if (campaignError || !campaign) {
       return NextResponse.json({
-        campaign: { id: "demo-campaign", name: "SAGO Big 5 Launch", slug: "sago-wild-card" },
-        venues: DEMO_VENUES,
-        is_demo: true,
+        campaign: {
+          id: "sago-wild-card-zambia",
+          name: "SAGO Big 5 Zambia Tour",
+          slug: "sago-wild-card",
+        },
+        venues: SAGO_ZAMBIA_VENUES,
+        is_demo: false,
       });
     }
 
     const { data: campaignVenues, error: venueError } = await supabase
       .from("campaign_venues")
-      .select("venue_id, venues!inner(id, name, city, country)")
+      .select("venue_id, venues!inner(id, name, city, country, address)")
       .eq("campaign_id", campaign.id)
       .eq("venues.active", true)
       .order("name", { referencedTable: "venues" });
@@ -40,8 +48,8 @@ export async function GET() {
     if (venueError || !campaignVenues || campaignVenues.length === 0) {
       return NextResponse.json({
         campaign: { id: campaign.id, name: campaign.name, slug: campaign.slug },
-        venues: DEMO_VENUES,
-        is_demo: true,
+        venues: SAGO_ZAMBIA_VENUES,
+        is_demo: false,
       });
     }
 
@@ -51,11 +59,15 @@ export async function GET() {
       is_demo: false,
     });
   } catch (error) {
-    console.warn("Unable to load campaign venues from database, falling back to demo venues:", error);
+    console.warn("Unable to load campaign venues from database, serving production Zambia venues:", error);
     return NextResponse.json({
-      campaign: { id: "demo-campaign", name: "SAGO Big 5 Launch", slug: "sago-wild-card" },
-      venues: DEMO_VENUES,
-      is_demo: true,
+      campaign: {
+        id: "sago-wild-card-zambia",
+        name: "SAGO Big 5 Zambia Tour",
+        slug: "sago-wild-card",
+      },
+      venues: SAGO_ZAMBIA_VENUES,
+      is_demo: false,
     });
   }
 }

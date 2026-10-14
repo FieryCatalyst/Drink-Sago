@@ -3,6 +3,10 @@ export type Venue = {
   name: string;
   city: string;
   country: string;
+  address?: string;
+  type?: string;
+  hours?: string;
+  mapUrl?: string;
 };
 
 export type GameSymbol = {
@@ -75,15 +79,61 @@ export const SAGO_REWARD_HIERARCHY: RewardTier[] = [
   },
 ];
 
-export const DEMO_VENUES: Venue[] = [
-  { id: "venue-jhb-01", name: "The Onyx Lounge", city: "Johannesburg", country: "South Africa" },
-  { id: "venue-cpt-02", name: "The Grand Safari Bar", city: "Cape Town", country: "South Africa" },
-  { id: "venue-lua-03", name: "Club Cabo Lounge", city: "Luanda", country: "Angola" },
-  { id: "venue-nbi-04", name: "Skyline Botanical", city: "Nairobi", country: "Kenya" },
-  { id: "venue-hre-05", name: "The Copper Terrace", city: "Harare", country: "Zimbabwe" },
-  { id: "venue-wdh-06", name: "Le Mirage Velvet Bar", city: "Windhoek", country: "Namibia" },
-  { id: "venue-mpm-07", name: "Breeze Lounge", city: "Maputo", country: "Mozambique" },
+export const SAGO_ZAMBIA_VENUES: Venue[] = [
+  {
+    id: "venue-zm-social-kitwe",
+    name: "Social Kitwe",
+    city: "Kitwe",
+    country: "Zambia",
+    address: "Shop 35, ECL Mall, Parklands, Kitwe",
+    type: "Lounge & Restaurant",
+    hours: "Open daily",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Social+Kitwe+ECL+Mall+Parklands+Zambia",
+  },
+  {
+    id: "venue-zm-social-munali",
+    name: "Social Munali",
+    city: "Lusaka",
+    country: "Zambia",
+    address: "Cnr Munali Rd & 12th St, near Munali Mall, Lusaka",
+    type: "Bar, Grill & Lounge",
+    hours: "Open daily",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Social+Munali+Munali+Mall+Lusaka+Zambia",
+  },
+  {
+    id: "venue-zm-zorgis-kitwe",
+    name: "Zorgi's Pub & Grill",
+    city: "Kitwe",
+    country: "Zambia",
+    address: "15 Kuomboka Drive, Parklands, Kitwe",
+    type: "Pub & Grill",
+    hours: "Open daily until late",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Zorgis+Pub+and+Grill+Kuomboka+Drive+Kitwe+Zambia",
+  },
+  {
+    id: "venue-zm-lusaka-sports-club",
+    name: "Lusaka Sports Club",
+    city: "Lusaka",
+    country: "Zambia",
+    address: "Plot 4978, Los Angeles Blvd, Longacres, Lusaka",
+    type: "Sports Club & Bar",
+    hours: "Open daily",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Lusaka+Club+Los+Angeles+Boulevard+Longacres+Lusaka+Zambia",
+  },
+  {
+    id: "venue-zm-classic-wines",
+    name: "Classic Wines & Liquor",
+    city: "Solwezi",
+    country: "Zambia",
+    address: "Solwezi, Zambia",
+    type: "Wine & Liquor Merchant",
+    hours: "Open daily",
+    mapUrl: "https://www.google.com/maps/search/?api=1&query=Classic+Wines+and+Liquor+Store+Solwezi+Zambia",
+  },
 ];
+
+export const DEMO_VENUES = SAGO_ZAMBIA_VENUES;
+export const SAGO_VENUES = SAGO_ZAMBIA_VENUES;
 
 export const BIG_5_SYMBOLS: GameSymbol[] = [
   { name: "Lion", image: "/assets/LION_crown_aligned.svg", subtitle: "King of the Pour" },
