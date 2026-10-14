@@ -8,7 +8,6 @@ import SiteFooter from "@/components/site-footer";
 import ClubModal from "@/components/club-modal";
 import SiteNav from "@/components/site-nav";
 import EditorialCocktailCarousel from "@/components/editorial-cocktail-carousel";
-import { AFRICAN_COUNTRIES } from "@/lib/countries";
 
 const products = [
   {
@@ -257,11 +256,13 @@ export default function Home() {
                   aria-label="Filter by country"
                 >
                   <option value="All markets">All markets</option>
-                  {AFRICAN_COUNTRIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
+                  {Array.from(new Set(retailers.map((r) => r.country)))
+                    .sort()
+                    .map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
                 </select>
                 <ChevronDown size={15} />
               </label>

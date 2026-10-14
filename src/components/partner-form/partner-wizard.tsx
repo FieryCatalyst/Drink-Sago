@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import {
   Building2,
@@ -19,7 +18,6 @@ import {
   Save,
   CheckCircle2,
   AlertCircle,
-  Clock,
   Sparkles,
 } from "lucide-react";
 
@@ -218,6 +216,7 @@ export default function PartnerWizard() {
     targetStep: number;
   } | null>(null);
   const [isModalSaving, setIsModalSaving] = useState(false);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -226,7 +225,33 @@ export default function PartnerWizard() {
     setTimeout(() => setToastMessage(null), 3000);
   }, []);
 
-  // Sync outlet display name from trading name if not filled
+  useEffect(() => {
+    const loadSavedDraft = async () => {
+      const reference = localStorage.getItem("sago_partner_draft_reference");
+      const ownershipToken = localStorage.getItem("sago_partner_draft_id");
+      if (!reference || !ownershipToken) {
+        setIsLoadingDraft(false);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/partners/register?reference=${reference}&ownershipToken=${ownershipToken}`, {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.formData) {
+            setFormData(data.formData);
+            setSavedReference(data.reference);
+          }
+        }
+      } catch {
+      } finally {
+        setIsLoadingDraft(false);
+      }
+    };
+    loadSavedDraft();
+  }, []);
   useEffect(() => {
     if (formData.tradingName && !formData.outletDisplayName) {
       setFormData((prev) => ({ ...prev, outletDisplayName: prev.tradingName }));
@@ -318,8 +343,8 @@ export default function PartnerWizard() {
   const handleModalSaveAndProceed = async () => {
     setIsModalSaving(true);
     try {
-      await handleSaveDraft();
-      if (incompleteModalData) {
+      const saved = await handleSaveDraft();
+      if (saved && incompleteModalData) {
         const next = incompleteModalData.targetStep;
         setCurrentStep(next);
         setMaxStepVisited((prev) => Math.max(prev, next));
@@ -358,18 +383,20 @@ export default function PartnerWizard() {
   const handleSaveAndReturnToReview = async () => {
     setIsModalSaving(true);
     try {
-      await handleSaveDraft();
-      setCurrentStep(10);
-      setCameFromReview(false);
-      setStepErrors({});
-      scrollToTop();
-      showToast("Saved updates! Returned to Step 10 Review.");
+      const saved = await handleSaveDraft();
+      if (saved) {
+        setCurrentStep(10);
+        setCameFromReview(false);
+        setStepErrors({});
+        scrollToTop();
+        showToast("Saved updates! Returned to Step 10 Review.");
+      }
     } finally {
       setIsModalSaving(false);
     }
   };
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = async (): Promise<boolean> => {
     try {
       // Persist to server draft registry
       const ownershipToken = savedReference ? localStorage.getItem("sago_partner_draft_id") : undefined;
@@ -390,11 +417,15 @@ export default function PartnerWizard() {
           }
         }
         showToast(`Draft saved successfully (Ref: ${d.reference})`);
+        return true;
       } else {
-        showToast("Failed to save draft to server.");
+        const err = await res.json().catch(() => ({}));
+        showToast(err.error || "Failed to save draft to server.");
+        return false;
       }
     } catch {
       showToast("Failed to save draft to server.");
+      return false;
     }
   };
 
@@ -452,6 +483,17 @@ export default function PartnerWizard() {
             submittedAt={submissionResult.submittedAt}
             data={formData}
           />
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoadingDraft) {
+    return (
+      <div className="partner-wizard-page" ref={containerRef} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
+        <div style={{ textAlign: "center", color: "rgba(245, 241, 232, 0.6)" }}>
+          <div style={{ width: "40px", height: "40px", border: "3px solid rgba(176, 141, 87, 0.3)", borderTopColor: "#b08d57", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 1rem" }} />
+          <p style={{ fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.1em" }}>Loading draft…</p>
         </div>
       </div>
     );

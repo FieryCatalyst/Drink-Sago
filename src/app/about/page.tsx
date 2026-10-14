@@ -54,7 +54,7 @@ export default function AboutPage() {
 
       <section className="about-hero">
         <Image
-          src="/assets/sago gold reserve whisky in nature.png"
+          src="/assets/Sago Gold Reserve Whisky in Nature.png"
           alt="SAGO Gold Reserve Whisky in Nature"
           fill
           priority
