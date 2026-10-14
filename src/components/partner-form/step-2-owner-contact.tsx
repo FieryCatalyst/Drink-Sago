@@ -15,7 +15,7 @@ export default function Step2OwnerContact({ data, errors, onChange }: Step2Props
     onChange("ownerFullName", val);
     onChange("authContactName", val);
     onChange("authAgreementPerson", val);
-    if (!data.signatoryFullName) {
+    if (!data.signatoryFullName || data.signatoryFullName === data.ownerFullName) {
       onChange("signatoryFullName", val);
     }
   };
@@ -23,7 +23,7 @@ export default function Step2OwnerContact({ data, errors, onChange }: Step2Props
   const handlePositionChange = (val: string) => {
     onChange("ownerPosition", val);
     onChange("authContactTitle", val);
-    if (!data.signatoryDesignation) {
+    if (!data.signatoryDesignation || data.signatoryDesignation === data.ownerPosition) {
       onChange("signatoryDesignation", val);
     }
   };

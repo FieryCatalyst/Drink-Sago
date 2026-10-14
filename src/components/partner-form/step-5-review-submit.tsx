@@ -302,7 +302,7 @@ export default function Step5ReviewSubmit({
               type="text"
               className={`form-input ${errors.signatoryFullName ? "has-error" : ""}`}
               placeholder="e.g., Peter Kamau Kariuki"
-              value={data.signatoryFullName || data.ownerFullName || ""}
+              value={data.signatoryFullName}
               onChange={(e) => onChange("signatoryFullName", e.target.value)}
             />
             {errors.signatoryFullName && (
@@ -319,7 +319,7 @@ export default function Step5ReviewSubmit({
               type="text"
               className="form-input"
               placeholder="e.g., Managing Director / Owner"
-              value={data.signatoryDesignation || data.ownerPosition || ""}
+              value={data.signatoryDesignation}
               onChange={(e) => onChange("signatoryDesignation", e.target.value)}
             />
           </div>

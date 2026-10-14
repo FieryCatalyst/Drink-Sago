@@ -105,9 +105,10 @@ export default function Step1BusinessInfo({ data, errors, onChange, onGoToStep }
               placeholder="e.g., Nairobi Beverage Holdings Ltd"
               value={data.registeredBusinessName}
               onChange={(e) => {
-                onChange("registeredBusinessName", e.target.value);
-                if (!data.tradingName) {
-                  onChange("tradingName", e.target.value);
+                const newValue = e.target.value;
+                onChange("registeredBusinessName", newValue);
+                if (!data.tradingName || data.tradingName === data.registeredBusinessName) {
+                  onChange("tradingName", newValue);
                 }
               }}
             />
@@ -128,9 +129,10 @@ export default function Step1BusinessInfo({ data, errors, onChange, onGoToStep }
               placeholder="e.g., The Velvet Oak Lounge"
               value={data.tradingName}
               onChange={(e) => {
-                onChange("tradingName", e.target.value);
-                if (!data.outletDisplayName) {
-                  onChange("outletDisplayName", e.target.value);
+                const newValue = e.target.value;
+                onChange("tradingName", newValue);
+                if (!data.outletDisplayName || data.outletDisplayName === data.tradingName) {
+                  onChange("outletDisplayName", newValue);
                 }
               }}
             />
@@ -161,6 +163,26 @@ export default function Step1BusinessInfo({ data, errors, onChange, onGoToStep }
               <span className="field-error-msg">{errors.businessType}</span>
             )}
           </div>
+
+          {/* Business Type Other (conditional) */}
+          {data.businessType === "Other" && (
+            <div className="col-6 form-field">
+              <label className="field-label" htmlFor="businessTypeOther">
+                <span>Please specify business type <span className="required-star">*</span></span>
+              </label>
+              <input
+                id="businessTypeOther"
+                type="text"
+                className={`form-input ${errors.businessTypeOther ? "has-error" : ""}`}
+                placeholder="e.g., Microbrewery, Wine Bar, etc."
+                value={data.businessTypeOther}
+                onChange={(e) => onChange("businessTypeOther", e.target.value)}
+              />
+              {errors.businessTypeOther && (
+                <span className="field-error-msg">{errors.businessTypeOther}</span>
+              )}
+            </div>
+          )}
 
           {/* Business Registration Number (Optional) */}
           <div className="col-6 form-field">
@@ -296,9 +318,10 @@ export default function Step1BusinessInfo({ data, errors, onChange, onGoToStep }
               placeholder="e.g., +254 712 345 678"
               value={data.businessPhone}
               onChange={(e) => {
-                onChange("businessPhone", e.target.value);
-                if (!data.ownerPhone) {
-                  onChange("ownerPhone", e.target.value);
+                const newValue = e.target.value;
+                onChange("businessPhone", newValue);
+                if (!data.ownerPhone || data.ownerPhone === data.businessPhone) {
+                  onChange("ownerPhone", newValue);
                 }
               }}
             />
@@ -319,9 +342,10 @@ export default function Step1BusinessInfo({ data, errors, onChange, onGoToStep }
               placeholder="e.g., manager@velvetoak.co.ke"
               value={data.businessEmail}
               onChange={(e) => {
-                onChange("businessEmail", e.target.value);
-                if (!data.ownerEmail) {
-                  onChange("ownerEmail", e.target.value);
+                const newValue = e.target.value;
+                onChange("businessEmail", newValue);
+                if (!data.ownerEmail || data.ownerEmail === data.businessEmail) {
+                  onChange("ownerEmail", newValue);
                 }
               }}
             />

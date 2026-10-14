@@ -136,7 +136,7 @@ const INITIAL_FORM_DATA: PartnerFormData = {
   hasComputerDevice: true,
   preferredRedemptionDevice: "Smartphone / Tablet",
   requiresOnboardingAssistance: true,
-  acknowledgedRedemptionRules: new Array(REDEMPTION_RULES.length).fill(true),
+  acknowledgedRedemptionRules: new Array(REDEMPTION_RULES.length).fill(false),
 
   requiresSettlement: false,
   settlementArrangement: "No Payment or Reimbursement Required",
@@ -164,9 +164,9 @@ const INITIAL_FORM_DATA: PartnerFormData = {
   marketingContactPhone: "",
 
   // Step 5: Review & Declarations
-  declarations: new Array(DECLARATION_STATEMENTS.length).fill(true),
-  privacyNoticeAcknowledged: true,
-  marketingCommsConsent: true,
+  declarations: new Array(DECLARATION_STATEMENTS.length).fill(false),
+  privacyNoticeAcknowledged: false,
+  marketingCommsConsent: false,
   signatoryFullName: "",
   signatoryDesignation: "",
   signatoryBusinessName: "",
@@ -236,7 +236,14 @@ export default function PartnerWizard() {
         signatoryBusinessName: prev.registeredBusinessName,
       }));
     }
-  }, [formData.tradingName, formData.registeredBusinessName, formData.outletDisplayName]);
+    // Initialize signatory fields once from owner fields (only if empty)
+    if (formData.ownerFullName && !formData.signatoryFullName) {
+      setFormData((prev) => ({ ...prev, signatoryFullName: prev.ownerFullName }));
+    }
+    if (formData.ownerPosition && !formData.signatoryDesignation) {
+      setFormData((prev) => ({ ...prev, signatoryDesignation: prev.ownerPosition }));
+    }
+  }, [formData.tradingName, formData.registeredBusinessName, formData.outletDisplayName, formData.ownerFullName, formData.ownerPosition, formData.signatoryFullName, formData.signatoryDesignation]);
 
   const handleFieldChange = <K extends keyof PartnerFormData>(
     field: K,
@@ -342,6 +349,9 @@ export default function PartnerWizard() {
       return;
     }
 
+    // Resolve signatory name: use signatoryFullName if provided, otherwise fall back to ownerFullName
+    const resolvedSignatoryName = formData.signatoryFullName?.trim() || formData.ownerFullName?.trim() || "";
+
     setIsSubmitting(true);
 
     try {
@@ -349,7 +359,12 @@ export default function PartnerWizard() {
       const res = await fetch("/api/partners/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: formData, isDraft: false, existingReference: savedReference, ownershipToken }),
+        body: JSON.stringify({
+          data: { ...formData, signatoryFullName: resolvedSignatoryName },
+          isDraft: false,
+          existingReference: savedReference,
+          ownershipToken,
+        }),
       });
 
       const resData = await res.json();
@@ -481,45 +496,49 @@ export default function PartnerWizard() {
         </div>
 
         {/* Validation Notice Banner (if any required info was missing on submit) */}
-        {validationSummary && (
-          <div
-            style={{
-              background: "rgba(239, 68, 68, 0.12)",
-              border: "1px solid rgba(239, 68, 68, 0.4)",
-              borderRadius: "12px",
-              padding: "1rem 1.25rem",
-              marginBottom: "1.5rem",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              flexWrap: "wrap",
-              gap: "0.75rem",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-              <AlertCircle size={20} color="#ef4444" />
-              <span style={{ fontSize: "0.9rem", color: "#fca5a5" }}>
-                {validationSummary.message}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => handleStepJump(validationSummary.step)}
+{validationSummary && (
+            <div
               style={{
-                background: "#ef4444",
-                color: "#fff",
-                border: "none",
-                padding: "0.4rem 0.9rem",
-                borderRadius: "6px",
-                fontSize: "0.8rem",
-                fontWeight: 600,
-                cursor: "pointer",
+                background: "rgba(239, 68, 68, 0.12)",
+                border: "1px solid rgba(239, 68, 68, 0.4)",
+                borderRadius: "12px",
+                padding: "1rem 1.25rem",
+                marginBottom: "1.5rem",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "0.75rem",
               }}
             >
-              Go to Step {validationSummary.step} ➔
-            </button>
-          </div>
-        )}
+              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+                <AlertCircle size={20} color="#ef4444" />
+                <span style={{ fontSize: "0.9rem", color: "#fca5a5" }}>
+                  {validationSummary.message}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setCurrentStep(validationSummary.step);
+                  setValidationSummary(null);
+                  scrollToTop();
+                }}
+                style={{
+                  background: "#ef4444",
+                  color: "#fff",
+                  border: "none",
+                  padding: "0.4rem 0.9rem",
+                  borderRadius: "6px",
+                  fontSize: "0.8rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Go to Step {validationSummary.step} ➔
+              </button>
+            </div>
+          )}
 
         {/* Form Panel */}
         <div className="partner-form-card">

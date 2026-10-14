@@ -161,9 +161,16 @@ export default function Step3PartnershipProducts({ data, errors, onChange }: Ste
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
           {(data.products || []).map((prod) => {
             return (
-              <div
+              <button
                 key={prod.id}
+                type="button"
                 onClick={() => handleProductToggle(prod.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    handleProductToggle(prod.id);
+                  }
+                }}
                 style={{
                   background: prod.selected ? "rgba(176, 141, 87, 0.1)" : "rgba(255, 255, 255, 0.02)",
                   border: `1.5px solid ${prod.selected ? "#b08d57" : "rgba(255, 255, 255, 0.1)"}`,
@@ -175,7 +182,11 @@ export default function Step3PartnershipProducts({ data, errors, onChange }: Ste
                   flexDirection: "column",
                   justifyContent: "space-between",
                   gap: "1.1rem",
+                  textAlign: "left",
+                  width: "100%",
                 }}
+                aria-pressed={prod.selected}
+                aria-label={prod.selected ? `Deselect ${prod.productName}` : `Select ${prod.productName}`}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "0.5rem" }}>
                   <div>
@@ -230,7 +241,7 @@ export default function Step3PartnershipProducts({ data, errors, onChange }: Ste
                     Product price will be discussed after onboarding
                   </span>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
