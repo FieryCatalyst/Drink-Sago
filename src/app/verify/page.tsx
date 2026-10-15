@@ -18,6 +18,8 @@ import {
   Ticket,
   ChevronRight,
   Sparkles,
+  Upload,
+  SwitchCamera,
 } from "lucide-react";
 
 type StaffProfile = {
@@ -86,6 +88,7 @@ type ActivityLog = {
 export default function VerificationPortalPage() {
   // Auth state
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [authToken, setAuthToken] = useState<string | null>(null);
   const [staff, setStaff] = useState<StaffProfile | null>(null);
   const [bar, setBar] = useState<BarProfile | null>(null);
 
@@ -114,8 +117,11 @@ export default function VerificationPortalPage() {
 
   // QR Scanner refs & state
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCameraIndex, setSelectedCameraIndex] = useState(0);
   const controlsRef = useRef<{ stop: () => void } | null>(null);
 
   // Ref for handleVerifyCode to avoid stale closure in camera scanner callback
@@ -141,10 +147,28 @@ export default function VerificationPortalPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Check existing session
+  // Helper to get auth headers (supports both token and cookies)
+  const getAuthHeaders = useCallback(
+    (extraHeaders: Record<string, string> = {}) => {
+      const token = authToken || (typeof window !== "undefined" ? localStorage.getItem("sago_verify_token") : null);
+      const headers: Record<string, string> = { ...extraHeaders };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+      return headers;
+    },
+    [authToken]
+  );
+
+  // Check existing session on load
   const checkSession = useCallback(async () => {
     try {
-      const res = await fetch("/api/verify/auth/me", { method: "GET" });
+      const token = typeof window !== "undefined" ? localStorage.getItem("sago_verify_token") : null;
+      if (token) {
+        setAuthToken(token);
+      }
+      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch("/api/verify/auth/me", { method: "GET", headers });
       if (res.ok) {
         const data = await res.json();
         if (data.authenticated) {
@@ -168,7 +192,10 @@ export default function VerificationPortalPage() {
     if (!staff || !bar) return;
     setRefreshingActivity(true);
     try {
-      const res = await fetch("/api/verify/activity", { method: "GET" });
+      const res = await fetch("/api/verify/activity", {
+        method: "GET",
+        headers: getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         setTodayRedeemedCount(data.todaySuccessfulCount || 0);
@@ -180,7 +207,7 @@ export default function VerificationPortalPage() {
     } finally {
       setRefreshingActivity(false);
     }
-  }, [staff, bar]);
+  }, [staff, bar, getAuthHeaders]);
 
   useEffect(() => {
     if (staff && bar) {
@@ -207,28 +234,51 @@ export default function VerificationPortalPage() {
     };
   }, [stopCamera]);
 
-  // Start QR Scanner using @zxing/browser
-  const startCameraScanner = useCallback(async () => {
+  // Start QR Scanner using @zxing/browser with camera selection
+  const startCameraScanner = useCallback(async (preferredDeviceId?: string) => {
     if (!videoRef.current) return;
     stopCamera();
     setCameraError(null);
     setCameraActive(true);
 
+    // Check if mediaDevices is supported in this browser/protocol
+    if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraActive(false);
+      setCameraError(
+        "Direct camera stream requires HTTPS or localhost. You can use 'Take Photo / Upload QR' below or enter the code manually."
+      );
+      return;
+    }
+
     try {
-      const { BrowserQRCodeReader } = await import("@zxing/browser");
+      const { BrowserQRCodeReader, BrowserCodeReader } = await import("@zxing/browser");
       const codeReader = new BrowserQRCodeReader();
 
+      let targetDeviceId = preferredDeviceId;
+
+      // If no specific device requested, enumerate to find the best rear camera
+      try {
+        const devices = await BrowserCodeReader.listVideoInputDevices();
+        setAvailableCameras(devices);
+        if (!targetDeviceId && devices.length > 0) {
+          // Look for rear/environment camera
+          const rearCam = devices.find((d) => /back|rear|environment|wide/i.test(d.label));
+          targetDeviceId = rearCam?.deviceId || devices[devices.length - 1]?.deviceId;
+        }
+      } catch {
+        // Enumerate fallback to undefined (system default)
+      }
+
       const controls = await codeReader.decodeFromVideoDevice(
-        undefined, // automatically select default / environment camera
+        targetDeviceId,
         videoRef.current,
         (result, error, ctrls) => {
           if (result) {
             const rawText = result.getText();
             if (rawText) {
-              // Beep / haptic if available
               if (typeof navigator !== "undefined" && navigator.vibrate) {
                 try {
-                  navigator.vibrate(50);
+                  navigator.vibrate(60);
                 } catch {
                   // ignore
                 }
@@ -248,24 +298,68 @@ export default function VerificationPortalPage() {
       setCameraActive(false);
       const errMsg = err instanceof Error ? err.message : String(err);
       if (errMsg.includes("NotAllowedError") || errMsg.includes("Permission denied")) {
-        setCameraError("Camera permission denied. Please enable camera access in your browser or enter the code manually.");
+        setCameraError("Camera permission denied. Please allow camera access in your browser or use 'Take Photo of QR' below.");
       } else {
-        setCameraError("Unable to access camera on this device. Please use manual code entry.");
+        setCameraError("Unable to access live video feed. Use 'Take Photo of QR' below or enter the code manually.");
       }
     }
   }, [stopCamera]);
+
+  // Flip camera between front and back
+  const handleToggleCamera = () => {
+    if (availableCameras.length <= 1) return;
+    const nextIndex = (selectedCameraIndex + 1) % availableCameras.length;
+    setSelectedCameraIndex(nextIndex);
+    startCameraScanner(availableCameras[nextIndex]?.deviceId);
+  };
 
   // Trigger camera start when switching to scan tab
   useEffect(() => {
     if (staff && activeTab === "scan" && !verificationResult && !redemptionReceipt) {
       const timer = setTimeout(() => {
         startCameraScanner();
-      }, 300);
+      }, 250);
       return () => clearTimeout(timer);
     } else {
       stopCamera();
     }
   }, [staff, activeTab, verificationResult, redemptionReceipt, startCameraScanner, stopCamera]);
+
+  // Decode QR from uploaded photo or camera snapshot (works on ANY mobile browser even over HTTP!)
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setVerifying(true);
+    setCameraError(null);
+
+    try {
+      const { BrowserQRCodeReader } = await import("@zxing/browser");
+      const codeReader = new BrowserQRCodeReader();
+      const imageUrl = URL.createObjectURL(file);
+
+      try {
+        const result = await codeReader.decodeFromImageUrl(imageUrl);
+        URL.revokeObjectURL(imageUrl);
+        if (result && result.getText()) {
+          handleVerifyCode(result.getText());
+        } else {
+          setCameraError("No QR code detected in that image. Please ensure the QR is well-lit and in focus.");
+        }
+      } catch {
+        URL.revokeObjectURL(imageUrl);
+        setCameraError("Could not read QR code from image. Please try taking a closer photo or enter the code manually.");
+      }
+    } catch (err) {
+      console.error("Image decode error", err);
+      setCameraError("Failed to process QR image.");
+    } finally {
+      setVerifying(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
 
   // Handle Login
   const handleLogin = async (e: React.FormEvent) => {
@@ -289,12 +383,16 @@ export default function VerificationPortalPage() {
       if (!res.ok || !data.success) {
         setLoginError(data.error || "Login failed. Please check your credentials.");
       } else {
+        if (data.token) {
+          localStorage.setItem("sago_verify_token", data.token);
+          setAuthToken(data.token);
+        }
         setStaff(data.staff);
         setBar(data.bar);
         setLoginPassword("");
       }
     } catch {
-      setLoginError("Unable to connect to verification server. Please check your internet connection.");
+      setLoginError("Unable to connect to verification server. Please check your network connection.");
     } finally {
       setLoginLoading(false);
     }
@@ -304,8 +402,13 @@ export default function VerificationPortalPage() {
   const handleLogout = async () => {
     stopCamera();
     try {
-      await fetch("/api/verify/auth/logout", { method: "POST" });
+      await fetch("/api/verify/auth/logout", {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
     } finally {
+      localStorage.removeItem("sago_verify_token");
+      setAuthToken(null);
       setStaff(null);
       setBar(null);
       setVerificationResult(null);
@@ -325,7 +428,7 @@ export default function VerificationPortalPage() {
     try {
       const res = await fetch("/api/verify/coupon/check", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ couponCode: codeToVerify.trim() }),
       });
 
@@ -347,7 +450,7 @@ export default function VerificationPortalPage() {
     }
   };
 
-  // Keep handleVerifyCodeRef synchronized with handleVerifyCode
+  // Keep handleVerifyCodeRef synchronized
   useEffect(() => {
     handleVerifyCodeRef.current = handleVerifyCode;
   }, [handleVerifyCode]);
@@ -362,7 +465,7 @@ export default function VerificationPortalPage() {
       const requestId = currentRequestId || `req-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
       const res = await fetch("/api/verify/coupon/redeem", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({
           couponCode: verificationResult.couponCode,
           requestId,
@@ -405,7 +508,6 @@ export default function VerificationPortalPage() {
       startCameraScanner();
     }
   };
-
 
   // Loading Splash
   if (loadingAuth) {
@@ -510,14 +612,12 @@ export default function VerificationPortalPage() {
                 )}
               </button>
             </form>
-
-
           </div>
         </div>
 
         {/* Footer */}
         <div className="text-center text-[11px] text-white/40 py-4 border-t border-white/5">
-          SAGO Spirits Official Verification Terminal · Protected by Cryptographic Row-Level Isolation
+          SAGO Spirits Official Verification Terminal · Protected by Row-Level Security
         </div>
       </div>
     );
@@ -810,67 +910,82 @@ export default function VerificationPortalPage() {
             {/* TAB 1: QR CAMERA SCANNER */}
             {activeTab === "scan" && (
               <div className="space-y-4">
-                {cameraError ? (
-                  <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-500/40 text-center space-y-3">
-                    <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
-                    <div>
-                      <div className="font-semibold text-sm text-amber-200">Camera Unavailable</div>
-                      <p className="text-xs text-amber-300/80 mt-1">{cameraError}</p>
+                {/* Live Video Camera Box */}
+                <div className="relative aspect-square max-w-[340px] mx-auto rounded-2xl overflow-hidden bg-black border-2 border-[#b08d57]/40 shadow-inner">
+                  <video
+                    ref={videoRef}
+                    className="w-full h-full object-cover"
+                    playsInline
+                    autoPlay
+                    muted
+                  />
+
+                  {/* Camera overlay reticle */}
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/30" />
+                    <div className="relative w-56 h-56 border-2 border-[#d4af37] rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.4)] z-10 flex flex-col justify-between p-2">
+                      <div className="flex justify-between">
+                        <div className="w-4 h-4 border-t-2 border-l-2 border-white rounded-tl" />
+                        <div className="w-4 h-4 border-t-2 border-r-2 border-white rounded-tr" />
+                      </div>
+                      <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-[#d4af37] to-transparent animate-pulse" />
+                      <div className="flex justify-between">
+                        <div className="w-4 h-4 border-b-2 border-l-2 border-white rounded-bl" />
+                        <div className="w-4 h-4 border-b-2 border-r-2 border-white rounded-br" />
+                      </div>
                     </div>
-                    <button
-                      onClick={() => setActiveTab("manual")}
-                      className="px-4 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 rounded-lg text-xs font-semibold text-amber-200 uppercase tracking-wider transition-colors"
-                    >
-                      Switch to Manual Entry
-                    </button>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {/* Live Video Camera Box */}
-                    <div className="relative aspect-square max-w-[340px] mx-auto rounded-2xl overflow-hidden bg-black border-2 border-[#b08d57]/40 shadow-inner">
-                      <video
-                        ref={videoRef}
-                        className="w-full h-full object-cover"
-                        playsInline
-                        muted
-                      />
 
-                      {/* Scanning Target Overlay */}
-                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                        {/* Dim Outer Mask */}
-                        <div className="absolute inset-0 bg-black/40" />
+                  {/* Flip camera button if multiple cameras detected */}
+                  {availableCameras.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={handleToggleCamera}
+                      title="Flip Camera"
+                      className="absolute top-3 right-3 z-30 p-2 rounded-full bg-black/70 border border-white/20 text-white/80 hover:text-white hover:bg-black transition-all"
+                    >
+                      <SwitchCamera className="w-4 h-4" />
+                    </button>
+                  )}
 
-                        {/* Clear Viewfinder Target */}
-                        <div className="relative w-56 h-56 border-2 border-[#d4af37] rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.4)] z-10 flex flex-col justify-between p-2">
-                          <div className="flex justify-between">
-                            <div className="w-4 h-4 border-t-2 border-l-2 border-white rounded-tl" />
-                            <div className="w-4 h-4 border-t-2 border-r-2 border-white rounded-tr" />
-                          </div>
-                          {/* Animated Scanning Laser Line */}
-                          <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-[#d4af37] to-transparent animate-pulse" />
-                          <div className="flex justify-between">
-                            <div className="w-4 h-4 border-b-2 border-l-2 border-white rounded-bl" />
-                            <div className="w-4 h-4 border-b-2 border-r-2 border-white rounded-br" />
-                          </div>
-                        </div>
-                      </div>
+                  {/* Status Indicator at bottom */}
+                  <div className="absolute bottom-3 inset-x-0 flex justify-center z-20">
+                    <span className="px-3 py-1 rounded-full bg-black/80 backdrop-blur-md text-[11px] text-white/90 border border-white/20 flex items-center gap-1.5 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                      {cameraActive ? "Scanning for QR code..." : "Camera ready"}
+                    </span>
+                  </div>
+                </div>
 
-                      {/* Scanning Status Badge */}
-                      <div className="absolute bottom-3 inset-x-0 flex justify-center z-20">
-                        <span className="px-3 py-1 rounded-full bg-black/80 backdrop-blur-md text-[11px] text-white/90 border border-white/20 flex items-center gap-1.5 font-medium">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                          Point camera at customer QR code
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="text-center">
-                      <p className="text-xs text-white/50">
-                        Align the SAGO QR code within the frame to verify automatically
-                      </p>
-                    </div>
+                {/* Error Banner if direct stream fails */}
+                {cameraError && (
+                  <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/30 text-center space-y-2">
+                    <p className="text-xs text-amber-200">{cameraError}</p>
                   </div>
                 )}
+
+                {/* Mobile Camera Photo Upload / Instant Snapshot Fallback */}
+                <div className="pt-2 text-center space-y-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                    id="qr-file-capture"
+                  />
+                  <label
+                    htmlFor="qr-file-capture"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-xs font-semibold uppercase tracking-wider text-[#d4af37] cursor-pointer transition-all active:scale-[0.98]"
+                  >
+                    <Upload className="w-4 h-4" />
+                    <span>Take Photo / Upload QR</span>
+                  </label>
+                  <p className="text-[11px] text-white/40">
+                    Point camera at customer QR code, or take a quick snapshot above.
+                  </p>
+                </div>
               </div>
             )}
 
@@ -892,7 +1007,7 @@ export default function VerificationPortalPage() {
                       type="text"
                       value={manualCode}
                       onChange={(e) => setManualCode(e.target.value.toUpperCase())}
-                      placeholder="e.g. SAGO-B-8974A2"
+                      placeholder="e.g. SAGO-ZM-XXXX-XXXX"
                       required
                       className="w-full px-4 py-3.5 bg-[#181818] border border-white/10 rounded-xl text-base font-mono uppercase tracking-widest text-[#f5f1e8] placeholder-white/20 focus:outline-none focus:border-[#b08d57] focus:ring-1 focus:ring-[#b08d57] transition-all"
                     />

@@ -25,7 +25,14 @@ export async function POST(request: Request) {
       try {
         const supabase = createClient(
           process.env.NEXT_PUBLIC_SUPABASE_URL,
-          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+          process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+          {
+            auth: {
+              persistSession: false,
+              autoRefreshToken: false,
+              detectSessionInUrl: false,
+            },
+          }
         );
 
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -96,7 +103,7 @@ export async function POST(request: Request) {
                 secure: process.env.NODE_ENV === "production",
                 sameSite: "lax",
                 path: "/",
-                maxAge: 60 * 60 * 24,
+                maxAge: 60 * 60 * 24, // 24 hours
               });
 
               return response;
@@ -187,8 +194,9 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     console.error("[VerifyPortal] Login error:", error);
+    const detail = error instanceof Error ? error.message : "Internal login verification error";
     return NextResponse.json(
-      { success: false, error: "An unexpected error occurred during login. Please try again." },
+      { success: false, error: detail },
       { status: 500 }
     );
   }
