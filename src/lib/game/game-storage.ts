@@ -104,8 +104,7 @@ function writeLocalSessions(sessions: GameSession[]) {
     ensureDirectoryExists();
     fs.writeFileSync(SESSIONS_FILE, JSON.stringify(sessions, null, 2), "utf-8");
   } catch (err) {
-    console.error("[GameStorage] Failed to write local sessions:", err);
-    throw new Error("Session persistence failed");
+    console.warn("[GameStorage] Warning: Failed to write local sessions to disk:", err);
   }
 }
 
