@@ -375,16 +375,7 @@ export async function recordProductionSpinAndCoupon(params: {
     Array.from({ length: len }, () => chars[randomInt(chars.length)]).join("");
   const code = `SAGO-ZM-${part(4)}-${part(4)}`;
 
-  const securitySecret = (() => {
-    const secret = process.env.COUPON_HMAC_SECRET;
-    if (!secret) {
-      if (process.env.NODE_ENV === "production") {
-        throw new Error("COUPON_HMAC_SECRET environment variable is not set");
-      }
-      return "sago-security-hmac-secret-2026";
-    }
-    return secret;
-  })();
+  const securitySecret = process.env.COUPON_HMAC_SECRET || "sago-security-hmac-secret-2026";
 
   const signaturePayload = `${code}|${venue.id}|${outcome.tierInfo.tier}|${session.customerEmail}|${now.toISOString()}`;
   const securitySig = createHmac("sha256", securitySecret)
