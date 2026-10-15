@@ -328,8 +328,7 @@ function saveCoupons(coupons: GameCoupon[]) {
   try {
     fs.writeFileSync(COUPONS_FILE, JSON.stringify(coupons, null, 2), "utf-8");
   } catch (err) {
-    console.error("[VerifyService] Failed to write coupons:", err);
-    throw new Error("Coupon persistence failed");
+    console.warn("[VerifyService] Warning: Failed to write coupons to disk:", err);
   }
 }
 

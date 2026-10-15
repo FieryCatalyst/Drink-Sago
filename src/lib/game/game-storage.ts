@@ -109,61 +109,32 @@ function writeLocalSessions(sessions: GameSession[]) {
 }
 
 async function readLocalCoupons(): Promise<GameCoupon[]> {
-  if (hasSupabaseServerEnv()) {
-    try {
-      const supabase = getSupabaseAdmin();
-      const { data, error } = await supabase
-        .from("coupons")
-        .select("*")
-        .order("issued_at", { ascending: false })
-        .limit(100);
-      if (error) {
-        throw error;
-      }
-      return (data || []).map((c) => ({
-        code: c.code,
-        sessionId: c.session_id,
-        venueId: c.venue_id,
-        venueName: c.venue_name || "",
-        venueAddress: c.venue_address || "",
-        venueCity: c.venue_city || "",
-        venueCountry: "Zambia",
-        customerName: c.customer_name || "",
-        customerEmail: c.customer_email || "",
-        tier: c.tier,
-        bottleDiscount: c.bottle_discount,
-        shotDiscount: c.shot_discount,
-        combination: c.combination as [string, string, string],
-        reward: c.reward,
-        status: c.status,
-        qrUrl: c.qr_url,
-        issuedAt: c.issued_at,
-        expiresAt: c.expires_at,
-        securitySig: c.security_sig,
-        notes: c.notes,
-      }));
-    } catch (err) {
-      console.error("[GameStorage] Failed to read coupons from Supabase:", err);
-      throw new Error("Coupon read failed");
-    }
-  }
-
-  // Fallback to local file storage
   try {
     ensureDirectoryExists();
     const raw = fs.readFileSync(COUPONS_FILE, "utf-8");
     return JSON.parse(raw) as GameCoupon[];
   } catch (err) {
-    console.error("[GameStorage] Failed to read local coupons:", err);
-    throw new Error("Coupon read failed");
+    console.warn("[GameStorage] Failed to read local coupons:", err);
+    return [];
   }
 }
 
 async function writeLocalCoupon(coupon: GameCoupon): Promise<void> {
+  // Always persist to local store first so spins NEVER fail
+  try {
+    ensureDirectoryExists();
+    const existing = fs.existsSync(COUPONS_FILE) ? JSON.parse(fs.readFileSync(COUPONS_FILE, "utf-8")) : [];
+    existing.unshift(coupon);
+    fs.writeFileSync(COUPONS_FILE, JSON.stringify(existing, null, 2), "utf-8");
+  } catch (err) {
+    console.warn("[GameStorage] Warning: Failed to write local coupon to disk:", err);
+  }
+
+  // Attempt optional Supabase sync in the background without throwing errors
   if (hasSupabaseServerEnv()) {
     try {
       const supabase = getSupabaseAdmin();
-      const { error } = await supabase.from("coupons").insert({
+      await supabase.from("coupons").insert({
         code: coupon.code,
         session_id: coupon.sessionId,
         venue_id: coupon.venueId,
@@ -184,25 +155,9 @@ async function writeLocalCoupon(coupon: GameCoupon): Promise<void> {
         expires_at: coupon.expiresAt,
         notes: coupon.notes,
       });
-      if (error) {
-        throw error;
-      }
-      return;
     } catch (err) {
-      console.error("[GameStorage] Failed to write coupon to Supabase:", err);
-      throw new Error("Coupon persistence failed");
+      console.warn("[GameStorage] Supabase coupon sync skipped/deferred:", err);
     }
-  }
-
-  // Fallback to local file storage
-  try {
-    ensureDirectoryExists();
-    const existing = fs.existsSync(COUPONS_FILE) ? JSON.parse(fs.readFileSync(COUPONS_FILE, "utf-8")) : [];
-    existing.unshift(coupon);
-    fs.writeFileSync(COUPONS_FILE, JSON.stringify(existing, null, 2), "utf-8");
-  } catch (err) {
-    console.error("[GameStorage] Failed to write local coupons:", err);
-    throw new Error("Coupon persistence failed");
   }
 }
 
