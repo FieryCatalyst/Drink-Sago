@@ -286,6 +286,30 @@ export function getProductionSession(sessionId: string): GameSession | null {
   return sessions.find((s) => s.id === sessionId) ?? null;
 }
 
+export function getOrCreateProductionSession(sessionId: string, venueId?: string): GameSession {
+  const existing = getProductionSession(sessionId);
+  if (existing) return existing;
+
+  const venue = findZambiaVenue(venueId);
+  const now = new Date();
+  const session: GameSession = {
+    id: sessionId,
+    customerName: "Guest Player",
+    customerEmail: "guest@drinksago.com",
+    venueId: venue.id,
+    venue,
+    marketingConsent: false,
+    status: "ACTIVE",
+    playCount: 0,
+    createdAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+  };
+  const sessions = readLocalSessions();
+  sessions.unshift(session);
+  writeLocalSessions(sessions);
+  return session;
+}
+
 export async function recordProductionSpinAndCoupon(params: {
   sessionId: string;
   outcome: ClassifiedOutcome;
@@ -297,10 +321,27 @@ export async function recordProductionSpinAndCoupon(params: {
   await getSessionLock(sessionId);
 
   const sessions = readLocalSessions();
-  const sessionIndex = sessions.findIndex((s) => s.id === sessionId);
+  let sessionIndex = sessions.findIndex((s) => s.id === sessionId);
 
   if (sessionIndex === -1) {
-    throw new Error("Session not found");
+    // Auto-recover session so spins never fail with "Session not found"
+    const venue = findZambiaVenue(params.venueId);
+    const now = new Date();
+    const recoveredSession: GameSession = {
+      id: sessionId,
+      customerName: "Guest Player",
+      customerEmail: "guest@drinksago.com",
+      venueId: venue.id,
+      venue,
+      marketingConsent: false,
+      status: "ACTIVE",
+      playCount: 0,
+      createdAt: now.toISOString(),
+      expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
+    };
+    sessions.unshift(recoveredSession);
+    writeLocalSessions(sessions);
+    sessionIndex = 0;
   }
 
   const session = sessions[sessionIndex];

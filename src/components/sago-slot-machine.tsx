@@ -389,7 +389,14 @@ export default function SagoSlotMachine() {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: "Spin failed" }));
-        setMessage(`Spin failed: ${errorData.error || "Server error"}`);
+        const errMsg = errorData.error || "Server error";
+        setMessage(errMsg);
+        if (errMsg.toLowerCase().includes("session") && (errMsg.includes("expired") || errMsg.includes("limit") || errMsg.includes("not found"))) {
+          try {
+            localStorage.removeItem("sago_game_session");
+          } catch {}
+          setRegistrationError(errMsg);
+        }
         setIsSpinning(false);
         return;
       }

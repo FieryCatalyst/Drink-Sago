@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
 import { hasSupabaseServerEnv } from "@/lib/env";
 import { drawOutcomeFromHierarchy, SAGO_REWARD_HIERARCHY } from "@/lib/game/demo-data";
-import { recordProductionSpinAndCoupon, findZambiaVenue, getProductionSession } from "@/lib/game/game-storage";
+import { recordProductionSpinAndCoupon, findZambiaVenue, getProductionSession, getOrCreateProductionSession } from "@/lib/game/game-storage";
 
 type Reward = {
   discount_value: number | null;
@@ -206,11 +206,8 @@ export async function POST(request: Request) {
     const outcome = drawOutcomeFromHierarchy();
     const { combo, tierInfo, patternClass } = outcome;
 
-    // 2. Fetch session details if available, and record spin + issue cryptographically signed coupon
-    const existingSession = getProductionSession(sessionId);
-    if (!existingSession) {
-      return NextResponse.json({ error: "Session not found" }, { status: 404 });
-    }
+    // 2. Fetch session details (or auto-recover if stale) and record spin + issue cryptographically signed coupon
+    const existingSession = getOrCreateProductionSession(sessionId, venueId);
     const resolvedVenueId = existingSession.venueId || venueId;
 
     let coupon: Awaited<ReturnType<typeof recordProductionSpinAndCoupon>>;
@@ -222,10 +219,13 @@ export async function POST(request: Request) {
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Spin processing failed";
-      if (msg === "Session not found") {
-        return NextResponse.json({ error: msg }, { status: 404 });
+      if (msg === "Session play limit reached") {
+        return NextResponse.json(
+          { error: "You have reached the maximum 3 complimentary spins for this session." },
+          { status: 400 }
+        );
       }
-      if (msg === "Session is not active" || msg === "Session expired" || msg === "Session play limit reached") {
+      if (msg === "Session is not active" || msg === "Session expired") {
         return NextResponse.json({ error: msg }, { status: 400 });
       }
       throw err;
