@@ -44,12 +44,11 @@ export async function POST(request: Request) {
       session_id?: unknown;
       venue_id?: unknown;
     };
-    const sessionId = typeof body.session_id === "string" ? body.session_id.trim() : "";
+    const sessionId =
+      typeof body.session_id === "string" && body.session_id.trim()
+        ? body.session_id.trim()
+        : `SAGO-DEMO-${Date.now().toString(36).toUpperCase()}`;
     const venueId = typeof body.venue_id === "string" ? body.venue_id.trim() : undefined;
-
-    if (!sessionId) {
-      return NextResponse.json({ error: "Active session required to spin" }, { status: 400 });
-    }
 
     const campaignSlug = process.env.SAGO_CAMPAIGN_SLUG;
 

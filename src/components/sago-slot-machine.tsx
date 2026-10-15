@@ -143,9 +143,9 @@ export default function SagoSlotMachine() {
   const [selectedVenueName, setSelectedVenueName] = useState(
     `${SAGO_ZAMBIA_VENUES[0].name} · ${SAGO_ZAMBIA_VENUES[0].city}`
   );
-  const [marketingConsent, setMarketingConsent] = useState(false);
-  const [registered, setRegistered] = useState(false);
-  const [sessionId, setSessionId] = useState("");
+  const [marketingConsent, setMarketingConsent] = useState(true);
+  const [registered, setRegistered] = useState(true);
+  const [sessionId, setSessionId] = useState("SAGO-DEMO-SESSION-ZM");
   const [isRegistering, setIsRegistering] = useState(false);
   const [registrationError, setRegistrationError] = useState("");
 
@@ -180,22 +180,15 @@ export default function SagoSlotMachine() {
     }
   }, [showResultModal]);
 
-  // Load verified session from localStorage if present
+  // Load session from localStorage if present
   useEffect(() => {
     try {
       const saved = localStorage.getItem("sago_game_session");
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed?.session_id && parsed?.venue_id) {
-          setSessionId(parsed.session_id);
-          setVenueId(parsed.venue_id);
-          if (parsed.country) setCountry(parsed.country);
-          if (parsed.name) setName(parsed.name);
-          if (parsed.email) setEmail(parsed.email);
-          if (parsed.venue_name) setSelectedVenueName(parsed.venue_name);
-          setRegistered(true);
-          setMessage(`Active session verified. Pull the golden lever to spin!`);
-        }
+        if (parsed?.session_id) setSessionId(parsed.session_id);
+        if (parsed?.venue_id) setVenueId(parsed.venue_id);
+        if (parsed?.venue_name) setSelectedVenueName(parsed.venue_name);
       }
     } catch {
       // Ignore local storage restrictions
@@ -587,16 +580,32 @@ export default function SagoSlotMachine() {
         </form>
       ) : (
         <div className="slot-gold-assembly">
-          {/* Active venue ribbon with change action */}
-          <div className="slot-machine__venue-ribbon">
-            <span>Locked to <strong>{selectedVenueName}</strong></span>
-            <button
-              type="button"
-              className="slot-machine__change-venue"
-              onClick={() => setRegistered(false)}
-            >
-              Change Venue ✎
-            </button>
+          {/* Active venue ribbon with venue selector */}
+          <div className="slot-machine__venue-ribbon" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
+            <span>Venue: <strong>{selectedVenueName.split("·")[0].trim()}</strong></span>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+              <span style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.5)" }}>Select Bar:</span>
+              <select
+                value={venueId}
+                onChange={(e) => handleVenueChange(e.target.value)}
+                style={{
+                  background: "#181818",
+                  color: "#d4af37",
+                  border: "1px solid rgba(212, 175, 55, 0.4)",
+                  borderRadius: "0.5rem",
+                  padding: "0.25rem 0.5rem",
+                  fontSize: "0.75rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                {venues.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} ({v.city})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           {/* Cabinet + Mechanical Lever Assembly */}

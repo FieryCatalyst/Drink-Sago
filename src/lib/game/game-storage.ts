@@ -345,29 +345,17 @@ export async function recordProductionSpinAndCoupon(params: {
   }
 
   const session = sessions[sessionIndex];
-
-  if (session.status !== "ACTIVE") {
-    throw new Error("Session is not active");
-  }
-
   const now = new Date();
-  if (new Date(session.expiresAt) < now) {
-    throw new Error("Session expired");
-  }
-
-  const maxPlays = 3;
-  if (session.playCount >= maxPlays) {
-    throw new Error("Session play limit reached");
-  }
-
-  // Prepare updated session but don't persist yet
+  // Keep session active for continuous demo play without blocking the user
   const updatedSession = {
     ...session,
-    playCount: session.playCount + 1,
+    status: "ACTIVE" as const,
+    playCount: (session.playCount || 0) + 1,
     lastPlayedAt: now.toISOString(),
+    expiresAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
   };
 
-  const venue = session.venue || findZambiaVenue(session.venueId);
+  const venue = session.venue || findZambiaVenue(session.venueId || params.venueId);
   const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
