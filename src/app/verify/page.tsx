@@ -116,13 +116,16 @@ export default function VerificationPortalPage() {
   const [refreshingActivity, setRefreshingActivity] = useState(false);
 
   // QR Scanner refs & state
+  type CameraStatus = "idle" | "starting" | "active" | "blocked" | "error";
+  const [cameraStatus, setCameraStatus] = useState<CameraStatus>("idle");
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [cameraActive, setCameraActive] = useState(false);
+  const streamRef = useRef<MediaStream | null>(null);
+  const scanFrameIdRef = useRef<number | null>(null);
+  const scanCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isScanningRef = useRef<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
-  const [selectedCameraIndex, setSelectedCameraIndex] = useState(0);
-  const controlsRef = useRef<{ stop: () => void } | null>(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState<"environment" | "user">("environment");
 
   // Ref for handleVerifyCode to avoid stale closure in camera scanner callback
   const handleVerifyCodeRef = useRef<((code: string) => Promise<void>) | null>(null);
@@ -217,15 +220,28 @@ export default function VerificationPortalPage() {
 
   // Clean up camera on tab change or unmount
   const stopCamera = useCallback(() => {
-    if (controlsRef.current) {
-      try {
-        controlsRef.current.stop();
-      } catch (e) {
-        console.warn("Error stopping scanner controls", e);
-      }
-      controlsRef.current = null;
+    isScanningRef.current = false;
+    if (scanFrameIdRef.current) {
+      cancelAnimationFrame(scanFrameIdRef.current);
+      scanFrameIdRef.current = null;
     }
-    setCameraActive(false);
+    if (streamRef.current) {
+      try {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      } catch (e) {
+        console.warn("Error stopping media tracks", e);
+      }
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      try {
+        videoRef.current.pause();
+        videoRef.current.srcObject = null;
+      } catch (e) {
+        console.warn("Error clearing video srcObject", e);
+      }
+    }
+    setCameraStatus("idle");
   }, []);
 
   useEffect(() => {
@@ -234,48 +250,118 @@ export default function VerificationPortalPage() {
     };
   }, [stopCamera]);
 
-  // Start QR Scanner using @zxing/browser with camera selection
-  const startCameraScanner = useCallback(async (preferredDeviceId?: string) => {
-    if (!videoRef.current) return;
-    stopCamera();
-    setCameraError(null);
-    setCameraActive(true);
+  // Start QR Scanner using direct native getUserMedia stream + robust continuous frame decoding
+  const startCameraScanner = useCallback(
+    async (facing: "environment" | "user" = cameraFacingMode) => {
+      stopCamera();
+      setCameraError(null);
+      setCameraStatus("starting");
 
-    // Check if mediaDevices is supported in this browser/protocol
-    if (typeof navigator === "undefined" || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setCameraActive(false);
-      setCameraError(
-        "Direct camera stream requires HTTPS or localhost. You can use 'Take Photo / Upload QR' below or enter the code manually."
-      );
-      return;
-    }
+      // Check secure context first (iOS Safari & Android Chrome strictly require HTTPS or localhost for getUserMedia)
+      const isLocalhost =
+        typeof window !== "undefined" &&
+        (window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1" ||
+          window.location.hostname.endsWith(".localhost"));
+      const isHttps = typeof window !== "undefined" && window.location.protocol === "https:";
+      const hasMediaDevices =
+        typeof navigator !== "undefined" && !!navigator.mediaDevices && !!navigator.mediaDevices.getUserMedia;
 
-    try {
-      const { BrowserQRCodeReader, BrowserCodeReader } = await import("@zxing/browser");
-      const codeReader = new BrowserQRCodeReader();
-
-      let targetDeviceId = preferredDeviceId;
-
-      // If no specific device requested, enumerate to find the best rear camera
-      try {
-        const devices = await BrowserCodeReader.listVideoInputDevices();
-        setAvailableCameras(devices);
-        if (!targetDeviceId && devices.length > 0) {
-          // Look for rear/environment camera
-          const rearCam = devices.find((d) => /back|rear|environment|wide/i.test(d.label));
-          targetDeviceId = rearCam?.deviceId || devices[devices.length - 1]?.deviceId;
-        }
-      } catch {
-        // Enumerate fallback to undefined (system default)
+      if (!hasMediaDevices || (!isHttps && !isLocalhost)) {
+        setCameraStatus("blocked");
+        setCameraError(
+          "Mobile browsers require HTTPS to stream live camera. Tap 'Snap Photo of QR' below to scan instantly with your phone camera."
+        );
+        return;
       }
 
-      const controls = await codeReader.decodeFromVideoDevice(
-        targetDeviceId,
-        videoRef.current,
-        (result, error, ctrls) => {
-          if (result) {
-            const rawText = result.getText();
-            if (rawText) {
+      try {
+        // Direct media stream request with rear camera priority
+        let stream: MediaStream;
+        try {
+          const constraints: MediaStreamConstraints = {
+            video: {
+              facingMode: { ideal: facing },
+              width: { ideal: 1280, max: 1920 },
+              height: { ideal: 720, max: 1080 },
+            },
+            audio: false,
+          };
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch (constraintErr) {
+          console.warn("Retrying with general video constraint:", constraintErr);
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+
+        streamRef.current = stream;
+
+        const videoEl = videoRef.current;
+        if (!videoEl) {
+          setCameraStatus("idle");
+          return;
+        }
+
+        videoEl.srcObject = stream;
+        videoEl.setAttribute("playsinline", "true");
+        videoEl.setAttribute("webkit-playsinline", "true");
+        videoEl.muted = true;
+        videoEl.defaultMuted = true;
+
+        // Start playback
+        await videoEl.play();
+        setCameraStatus("active");
+        isScanningRef.current = true;
+
+        // Import ZXing dynamically for browser
+        const { BrowserQRCodeReader } = await import("@zxing/browser");
+        const codeReader = new BrowserQRCodeReader();
+
+        // Process frames continuously
+        const processFrame = async () => {
+          if (!isScanningRef.current || !videoRef.current) return;
+          const currentVideo = videoRef.current;
+
+          if (currentVideo.readyState >= 2 && currentVideo.videoWidth > 0) {
+            let foundCode: string | null = null;
+
+            // 1. Try native BarcodeDetector API (hardware accelerated in Android Chrome & Safari 17+)
+            if (typeof window !== "undefined" && "BarcodeDetector" in window) {
+              try {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const detector = new (window as any).BarcodeDetector({ formats: ["qr_code"] });
+                const results = await detector.detect(currentVideo);
+                if (results && results.length > 0 && results[0].rawValue) {
+                  foundCode = results[0].rawValue;
+                }
+              } catch {
+                // Ignore detector failure and fallback to canvas
+              }
+            }
+
+            // 2. Fallback to ZXing canvas decoding
+            if (!foundCode) {
+              if (!scanCanvasRef.current) {
+                scanCanvasRef.current = document.createElement("canvas");
+              }
+              const canvas = scanCanvasRef.current;
+              canvas.width = Math.min(640, currentVideo.videoWidth);
+              canvas.height = Math.min(640, currentVideo.videoHeight);
+              const ctx = canvas.getContext("2d", { willReadFrequently: true });
+              if (ctx) {
+                ctx.drawImage(currentVideo, 0, 0, canvas.width, canvas.height);
+                try {
+                  const zxingResult = codeReader.decodeFromCanvas(canvas);
+                  if (zxingResult && zxingResult.getText()) {
+                    foundCode = zxingResult.getText();
+                  }
+                } catch {
+                  // Frame had no readable QR code; continue scanning
+                }
+              }
+            }
+
+            // If a valid QR code was detected
+            if (foundCode) {
               if (typeof navigator !== "undefined" && navigator.vibrate) {
                 try {
                   navigator.vibrate(60);
@@ -283,49 +369,56 @@ export default function VerificationPortalPage() {
                   // ignore
                 }
               }
-              ctrls.stop();
-              controlsRef.current = null;
-              setCameraActive(false);
-              handleVerifyCodeRef.current?.(rawText);
+              stopCamera();
+              handleVerifyCodeRef.current?.(foundCode);
+              return;
             }
           }
-        }
-      );
 
-      controlsRef.current = controls;
-    } catch (err: unknown) {
-      console.error("Camera access error:", err);
-      setCameraActive(false);
-      const errMsg = err instanceof Error ? err.message : String(err);
-      if (errMsg.includes("NotAllowedError") || errMsg.includes("Permission denied")) {
-        setCameraError("Camera permission denied. Please allow camera access in your browser or use 'Take Photo of QR' below.");
-      } else {
-        setCameraError("Unable to access live video feed. Use 'Take Photo of QR' below or enter the code manually.");
+          if (isScanningRef.current) {
+            scanFrameIdRef.current = requestAnimationFrame(processFrame);
+          }
+        };
+
+        scanFrameIdRef.current = requestAnimationFrame(processFrame);
+      } catch (err: unknown) {
+        console.error("Camera access error:", err);
+        stopCamera();
+        const errMsg = err instanceof Error ? err.message : String(err);
+        if (errMsg.includes("NotAllowedError") || errMsg.includes("Permission denied")) {
+          setCameraStatus("blocked");
+          setCameraError(
+            "Camera permission denied. Please allow camera permissions in browser settings or tap 'Snap Photo of QR' below."
+          );
+        } else {
+          setCameraStatus("error");
+          setCameraError("Camera feed could not be started. Tap 'Snap Photo of QR' below to scan using phone camera.");
+        }
       }
-    }
-  }, [stopCamera]);
+    },
+    [cameraFacingMode, stopCamera]
+  );
 
   // Flip camera between front and back
   const handleToggleCamera = () => {
-    if (availableCameras.length <= 1) return;
-    const nextIndex = (selectedCameraIndex + 1) % availableCameras.length;
-    setSelectedCameraIndex(nextIndex);
-    startCameraScanner(availableCameras[nextIndex]?.deviceId);
+    const nextFacing = cameraFacingMode === "environment" ? "user" : "environment";
+    setCameraFacingMode(nextFacing);
+    startCameraScanner(nextFacing);
   };
 
-  // Trigger camera start when switching to scan tab
+  // Attempt auto-start when switching to scan tab
   useEffect(() => {
     if (staff && activeTab === "scan" && !verificationResult && !redemptionReceipt) {
       const timer = setTimeout(() => {
         startCameraScanner();
-      }, 250);
+      }, 300);
       return () => clearTimeout(timer);
     } else {
       stopCamera();
     }
   }, [staff, activeTab, verificationResult, redemptionReceipt, startCameraScanner, stopCamera]);
 
-  // Decode QR from uploaded photo or camera snapshot (works on ANY mobile browser even over HTTP!)
+  // Decode QR from uploaded photo or camera snapshot (works on ANY mobile browser even over plain HTTP!)
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -918,48 +1011,131 @@ export default function VerificationPortalPage() {
                     playsInline
                     autoPlay
                     muted
+                    style={{ display: cameraStatus === "active" ? "block" : "none" }}
                   />
 
-                  {/* Camera overlay reticle */}
-                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black/30" />
-                    <div className="relative w-56 h-56 border-2 border-[#d4af37] rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.4)] z-10 flex flex-col justify-between p-2">
-                      <div className="flex justify-between">
-                        <div className="w-4 h-4 border-t-2 border-l-2 border-white rounded-tl" />
-                        <div className="w-4 h-4 border-t-2 border-r-2 border-white rounded-tr" />
+                  {/* 1. ACTIVE SCANNING VIEW */}
+                  {cameraStatus === "active" && (
+                    <>
+                      {/* Reticle Overlay */}
+                      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/20" />
+                        <div className="relative w-56 h-56 border-2 border-[#d4af37] rounded-2xl shadow-[0_0_20px_rgba(212,175,55,0.4)] z-10 flex flex-col justify-between p-2">
+                          <div className="flex justify-between">
+                            <div className="w-4 h-4 border-t-2 border-l-2 border-white rounded-tl" />
+                            <div className="w-4 h-4 border-t-2 border-r-2 border-white rounded-tr" />
+                          </div>
+                          <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-[#d4af37] to-transparent animate-pulse" />
+                          <div className="flex justify-between">
+                            <div className="w-4 h-4 border-b-2 border-l-2 border-white rounded-bl" />
+                            <div className="w-4 h-4 border-b-2 border-r-2 border-white rounded-br" />
+                          </div>
+                        </div>
                       </div>
-                      <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-[#d4af37] to-transparent animate-pulse" />
-                      <div className="flex justify-between">
-                        <div className="w-4 h-4 border-b-2 border-l-2 border-white rounded-bl" />
-                        <div className="w-4 h-4 border-b-2 border-r-2 border-white rounded-br" />
-                      </div>
-                    </div>
-                  </div>
 
-                  {/* Flip camera button if multiple cameras detected */}
-                  {availableCameras.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={handleToggleCamera}
-                      title="Flip Camera"
-                      className="absolute top-3 right-3 z-30 p-2 rounded-full bg-black/70 border border-white/20 text-white/80 hover:text-white hover:bg-black transition-all"
-                    >
-                      <SwitchCamera className="w-4 h-4" />
-                    </button>
+                      {/* Flip camera button */}
+                      <button
+                        type="button"
+                        onClick={handleToggleCamera}
+                        title="Flip Camera (Front/Back)"
+                        className="absolute top-3 right-3 z-30 p-2.5 rounded-full bg-black/80 border border-[#b08d57]/60 text-[#d4af37] hover:text-white hover:bg-black transition-all shadow-lg"
+                      >
+                        <SwitchCamera className="w-5 h-5" />
+                      </button>
+
+                      {/* Status Indicator */}
+                      <div className="absolute bottom-3 inset-x-0 flex justify-center z-20">
+                        <span className="px-3 py-1 rounded-full bg-black/80 backdrop-blur-md text-[11px] text-white/90 border border-emerald-500/30 flex items-center gap-1.5 font-medium">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                          Scanning for QR code...
+                        </span>
+                      </div>
+                    </>
                   )}
 
-                  {/* Status Indicator at bottom */}
-                  <div className="absolute bottom-3 inset-x-0 flex justify-center z-20">
-                    <span className="px-3 py-1 rounded-full bg-black/80 backdrop-blur-md text-[11px] text-white/90 border border-white/20 flex items-center gap-1.5 font-medium">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                      {cameraActive ? "Scanning for QR code..." : "Camera ready"}
-                    </span>
-                  </div>
+                  {/* 2. STARTING / INITIALIZING */}
+                  {cameraStatus === "starting" && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-[#0a0a0a] z-20 space-y-3">
+                      <RefreshCw className="w-8 h-8 text-[#d4af37] animate-spin" />
+                      <div>
+                        <p className="text-xs font-semibold text-white/90">Starting Camera Feed...</p>
+                        <p className="text-[11px] text-white/50 mt-1">Requesting camera permissions</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. IDLE: TAP TO ACTIVATE */}
+                  {cameraStatus === "idle" && (
+                    <div
+                      onClick={() => startCameraScanner()}
+                      role="button"
+                      tabIndex={0}
+                      className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-[#0d0d0d] hover:bg-[#141414] cursor-pointer z-20 space-y-3 transition-colors"
+                    >
+                      <div className="w-14 h-14 rounded-full bg-[#b08d57]/20 border border-[#b08d57]/40 flex items-center justify-center text-[#d4af37] shadow-lg">
+                        <Camera className="w-7 h-7" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm text-white">Tap to Start Live Camera</p>
+                        <p className="text-[11px] text-white/50 mt-1 max-w-[220px]">
+                          Tap here to grant camera access and activate the live QR viewfinder.
+                        </p>
+                      </div>
+                      <span className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#b08d57] to-[#d4af37] text-black font-semibold text-xs tracking-wider uppercase shadow-md mt-1">
+                        Activate Camera
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 4. BLOCKED: HTTP ON MOBILE OR PERMISSION DENIED */}
+                  {cameraStatus === "blocked" && (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      role="button"
+                      tabIndex={0}
+                      className="absolute inset-0 flex flex-col items-center justify-center p-5 text-center bg-[#130d07] hover:bg-[#1a120a] cursor-pointer z-20 space-y-3 transition-colors border-2 border-amber-500/40"
+                    >
+                      <div className="w-14 h-14 rounded-full bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-lg animate-pulse">
+                        <Camera className="w-7 h-7" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm text-amber-200">Snap Photo of Customer QR</p>
+                        <p className="text-[11px] text-white/60 mt-1 max-w-[230px]">
+                          Live stream requires HTTPS on mobile. Tap to open phone camera and scan instantly.
+                        </p>
+                      </div>
+                      <span className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#b08d57] to-[#d4af37] text-black font-semibold text-xs tracking-wider uppercase shadow-md flex items-center gap-1.5 mt-1">
+                        <Upload className="w-3.5 h-3.5" />
+                        Snap Photo Now
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 5. ERROR: CAMERA HARDWARE OR PLAY ERROR */}
+                  {cameraStatus === "error" && (
+                    <div
+                      onClick={() => startCameraScanner()}
+                      role="button"
+                      tabIndex={0}
+                      className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-[#150a0a] hover:bg-[#1f0e0e] cursor-pointer z-20 space-y-3 transition-colors"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
+                        <AlertTriangle className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-xs text-white">Camera Connection Failed</p>
+                        <p className="text-[10px] text-white/50 mt-0.5">Tap to retry camera, or use photo upload below.</p>
+                      </div>
+                      <span className="px-3 py-1.5 rounded-lg bg-white/10 text-white text-[11px] font-semibold uppercase tracking-wider">
+                        Retry Camera
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Error Banner if direct stream fails */}
                 {cameraError && (
-                  <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/30 text-center space-y-2">
+                  <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/30 text-center space-y-1">
                     <p className="text-xs text-amber-200">{cameraError}</p>
                   </div>
                 )}

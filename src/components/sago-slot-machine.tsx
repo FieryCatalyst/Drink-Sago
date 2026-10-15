@@ -220,14 +220,17 @@ export default function SagoSlotMachine() {
             return chosenVenue.id;
           });
         } else {
-          // Empty venues array from server - clear venues and disable registration
-          setVenues([]);
-          setVenueId("");
-          setSelectedVenueName("No venues available");
+          // Fallback to SAGO_ZAMBIA_VENUES
+          setVenues(SAGO_ZAMBIA_VENUES);
+          setVenueId(SAGO_ZAMBIA_VENUES[0].id);
+          setSelectedVenueName(`${SAGO_ZAMBIA_VENUES[0].name} · ${SAGO_ZAMBIA_VENUES[0].city}`);
         }
       })
       .catch(() => {
         // Fallback Zambia venues are already present in state
+        setVenues(SAGO_ZAMBIA_VENUES);
+        setVenueId(SAGO_ZAMBIA_VENUES[0].id);
+        setSelectedVenueName(`${SAGO_ZAMBIA_VENUES[0].name} · ${SAGO_ZAMBIA_VENUES[0].city}`);
       });
   }, []);
 
@@ -317,9 +320,11 @@ export default function SagoSlotMachine() {
       return;
     }
 
+    const resolvedVenueId = venueId || (venues.length > 0 ? venues[0].id : SAGO_ZAMBIA_VENUES[0].id);
+
     try {
       const response = await fetch("/api/game/session", {
-        body: JSON.stringify({ email, marketing_consent: marketingConsent, name, venue_id: venueId }),
+        body: JSON.stringify({ email, marketing_consent: marketingConsent, name, venue_id: resolvedVenueId }),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       });
