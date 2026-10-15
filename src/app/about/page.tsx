@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { motion, useInView, useReducedMotion } from "framer-motion";
-import { ArrowDown, ArrowRight, MapPin } from "lucide-react";
+import { ArrowRight, MapPin } from "lucide-react";
 import { useRef, useState } from "react";
 import SiteNav from "@/components/site-nav";
 import SiteFooter from "@/components/site-footer";
@@ -80,9 +80,7 @@ export default function AboutPage() {
             <br />
             <em>somewhere to go.</em>
           </motion.h1>
-          <a className="about-hero__scroll" href="#story">
-            Begin the story <ArrowDown size={16} />
-          </a>
+
         </div>
       </section>
 
