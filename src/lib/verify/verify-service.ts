@@ -271,7 +271,14 @@ export function getBars(): BarRecord[] {
 
 export function getBarById(barId: string): BarRecord | null {
   const bars = getBars();
-  return bars.find((b) => b.id === barId) || null;
+  const direct = bars.find((b) => b.id === barId);
+  if (direct) return direct;
+  for (const [localId, uuid] of Object.entries(BAR_ID_MAP)) {
+    if (uuid === barId || localId === barId) {
+      return bars.find((b) => b.id === localId) || null;
+    }
+  }
+  return null;
 }
 
 export function getStaffList(): BarStaffRecord[] {
