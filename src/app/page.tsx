@@ -12,7 +12,7 @@ import EditorialCocktailCarousel from "@/components/editorial-cocktail-carousel"
 const products = [
   {
     name: "GOLD RESERVE WHISKY",
-    image: "/assets/Sago gold reseve whisky bottle.png",
+    image: "/assets/Sago Gold Reserve Whisky Bottle.png",
     id: "gold-reserve",
     meta: "40% ABV · 750 ml · 200 ml · 180 ml",
   },
@@ -112,7 +112,7 @@ export default function Home() {
         {/* ── HERO ───────────────────────────────────────────────── */}
         <section className="home-hero">
           <Image
-            src="/assets/sago gold whisky still life.png"
+            src="/assets/Sago Gold Reserve in a Luxe Lounge.png"
             alt="SAGO Gold Reserve Whisky | The House of Premium Spirits"
             fill
             priority
@@ -140,7 +140,6 @@ export default function Home() {
         <section className="home-intro" id="intro">
           <div className="home-intro__statement">
             <h2 className="display">The SAGO Philosophy</h2>
-            <p className="home-intro__lead">CELEBRATE THE MOMENT</p>
             <p className="body-copy">
               Life is made up of wins, celebrations, and multiple small moments.
               Sago is designed to{" "}

@@ -27,6 +27,12 @@ import {
   Tag,
   Loader2,
   Download,
+  Phone,
+  MapPin,
+  Globe,
+  Store,
+  Mail,
+  Hash,
 } from "lucide-react";
 import {
   PartnerApplicationRecord,
@@ -42,10 +48,10 @@ interface PartnerAdminDashboardProps {
 const CHECKLIST_ITEMS: Array<{ key: keyof VerificationChecklist; label: string }> = [
   { key: "business_registration_verified", label: "Business Registration Verified" },
   { key: "business_address_verified", label: "Business Address & Premises Verified" },
-  { key: "owner_rep_verified", label: "Owner / Authorized Representative Verified" },
-  { key: "licences_verified", label: "County Liquor Licence & SBP Verified" },
-  { key: "tax_docs_reviewed", label: "Tax & KRA PIN Documentation Reviewed" },
-  { key: "terms_reviewed", label: "Product & Proposed Discount Terms Reviewed" },
+  { key: "owner_rep_verified", label: "Manager / Authorized Representative Verified" },
+  { key: "licences_verified", label: "Liquor Licence & Operating Permits Verified" },
+  { key: "tax_docs_reviewed", label: "Tax & Registration Documentation Reviewed" },
+  { key: "terms_reviewed", label: "Product & Partnership Terms Reviewed" },
   { key: "agreement_signed", label: "Official SAGO Partnership Agreement Signed" },
   { key: "outlet_access_configured", label: "Outlet Redemption Access Configured" },
   { key: "staff_accounts_configured", label: "Staff Accounts Configured" },
@@ -405,8 +411,8 @@ export default function PartnerAdminDashboard({
               }}
             >
               <th style={{ padding: "0.85rem 1rem" }}>Reference</th>
-              <th style={{ padding: "0.85rem 1rem" }}>Trading Name & County</th>
-              <th style={{ padding: "0.85rem 1rem" }}>Category</th>
+              <th style={{ padding: "0.85rem 1rem" }}>Trading Name & Location</th>
+              <th style={{ padding: "0.85rem 1rem" }}>Type / Category</th>
               <th style={{ padding: "0.85rem 1rem" }}>Submitted</th>
               <th style={{ padding: "0.85rem 1rem" }}>Checklist</th>
               <th style={{ padding: "0.85rem 1rem" }}>Status</th>
@@ -445,13 +451,22 @@ export default function PartnerAdminDashboard({
                       {app.applicationReference}
                     </td>
                     <td style={{ padding: "0.85rem 1rem" }}>
-                      <strong style={{ color: "#f5f1e8" }}>{app.data.tradingName}</strong>
-                      <div style={{ color: "rgba(245, 241, 232, 0.5)", fontSize: "0.75rem" }}>
-                        {app.data.townCity}, {app.data.county} County
+                      <strong style={{ color: "#f5f1e8" }}>{app.data.tradingName || app.data.registeredBusinessName}</strong>
+                      <div style={{ color: "rgba(245, 241, 232, 0.5)", fontSize: "0.75rem", marginTop: "2px" }}>
+                        {[app.data.townCity, app.data.county, app.data.country].filter(Boolean).join(", ")}
                       </div>
                     </td>
-                    <td style={{ padding: "0.85rem 1rem", color: "rgba(245, 241, 232, 0.8)" }}>
-                      {app.data.businessType}
+                    <td style={{ padding: "0.85rem 1rem" }}>
+                      <div style={{ color: "rgba(245, 241, 232, 0.9)", fontSize: "0.82rem", fontWeight: 500 }}>
+                        {app.data.businessType === "Other" && app.data.businessTypeOther
+                          ? `Other (${app.data.businessTypeOther})`
+                          : app.data.businessType}
+                      </div>
+                      {app.data.outletCategory && (
+                        <span style={{ fontSize: "0.72rem", color: "#b08d57", display: "block", marginTop: "2px" }}>
+                          {app.data.outletCategory}
+                        </span>
+                      )}
                     </td>
                     <td style={{ padding: "0.85rem 1rem", color: "rgba(245, 241, 232, 0.6)", fontSize: "0.78rem" }}>
                       {new Date(app.submittedAt).toLocaleDateString()}
@@ -789,131 +804,254 @@ export default function PartnerAdminDashboard({
 
               {/* TAB 3: APPLICATION DATA & COMPLIANCE FILES */}
               {activeTab === "details" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                  {/* Attached Documents */}
-                  <div>
-                    <h5 style={{ color: "#d4af37", fontSize: "0.9rem", fontWeight: 700, marginBottom: "0.75rem" }}>
-                      Uploaded Compliance Documents ({(selectedApp.data.documents || []).length})
-                    </h5>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                      {(selectedApp.data.documents || []).map((doc, idx) => (
-                        <div
-                          key={idx}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            padding: "0.75rem 1rem",
-                            background: "rgba(10, 10, 10, 0.7)",
-                            border: "1px solid rgba(176, 141, 87, 0.2)",
-                            borderRadius: "8px",
-                            fontSize: "0.85rem",
-                          }}
-                        >
-                          <div>
-                            <span style={{ fontWeight: 600, color: "#f5f1e8" }}>{doc.documentType}</span>
-                            <span style={{ color: "rgba(245, 241, 232, 0.5)", marginLeft: "0.5rem" }}>
-                              File: {doc.fileName}
-                            </span>
-                          </div>
-                          {doc.fileUrl && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
+                  {/* Section A: Basic Business Details (Q1 - Q12) */}
+                  <div style={{ background: "rgba(16, 16, 16, 0.6)", border: "1px solid rgba(176, 141, 87, 0.2)", borderRadius: "12px", padding: "1.25rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem", borderBottom: "1px solid rgba(176, 141, 87, 0.15)", paddingBottom: "0.6rem" }}>
+                      <Building2 size={16} color="#d4af37" />
+                      <h5 style={{ color: "#d4af37", fontSize: "0.92rem", fontWeight: 700, margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Section A · Basic Business Details (Questions 1 to 12)
+                      </h5>
+                    </div>
+
+                    <div className="form-grid" style={{ fontSize: "0.82rem" }}>
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>1. Registered Business Name:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.registeredBusinessName || "N/A"}</div>
+                      </div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>2. Business Registration Number:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.businessRegistrationNumber || "N/A"}</div>
+                      </div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>3. Website URL:</span>
+                        <div>
+                          {selectedApp.data.businessWebsite ? (
                             <a
-                              href={doc.fileUrl}
+                              href={selectedApp.data.businessWebsite.startsWith("http") ? selectedApp.data.businessWebsite : `https://${selectedApp.data.businessWebsite}`}
                               target="_blank"
                               rel="noreferrer"
-                              className="btn-secondary"
-                              style={{ padding: "0.3rem 0.75rem", fontSize: "0.72rem" }}
+                              style={{ color: "#d4af37", textDecoration: "underline", display: "inline-flex", alignItems: "center", gap: "4px" }}
                             >
-                              <ExternalLink size={12} /> View Document
+                              {selectedApp.data.businessWebsite} <ExternalLink size={11} />
                             </a>
+                          ) : (
+                            <span style={{ color: "rgba(245, 241, 232, 0.4)" }}>None provided</span>
                           )}
                         </div>
-                      ))}
+                      </div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>4. Official Business Phone:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.businessPhone || "N/A"}</div>
+                      </div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>5. Business Manager Full Name:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.managerFullName || selectedApp.data.ownerFullName || "N/A"}</div>
+                      </div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>6. Business Manager Phone:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.managerPhone || selectedApp.data.ownerPhone || "N/A"}</div>
+                      </div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>7. Business Type:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>
+                          {selectedApp.data.businessType === "Other" && selectedApp.data.businessTypeOther
+                            ? `Other (${selectedApp.data.businessTypeOther})`
+                            : selectedApp.data.businessType || "N/A"}
+                        </div>
+                      </div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>8. Trading Name / Bar Name:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.tradingName || "N/A"}</div>
+                      </div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>9. Date Established:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.dateOfEstablishment || "N/A"}</div>
+                      </div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>10. Business Email:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.businessEmail || "N/A"}</div>
+                      </div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>11. Outlets Operated:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.numberOfOutlets || 1}</div>
+                      </div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>12. Monthly Sales Volume:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.monthlySalesVolume || "Not specified"}</div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Business & Contacts summary */}
-                  <div>
-                    <h5 style={{ color: "#d4af37", fontSize: "0.9rem", fontWeight: 700, marginBottom: "0.75rem" }}>
-                      Business & Executive Details
-                    </h5>
+                  {/* Section B: Business Address & Location (Q13 - Q18) */}
+                  <div style={{ background: "rgba(16, 16, 16, 0.6)", border: "1px solid rgba(176, 141, 87, 0.2)", borderRadius: "12px", padding: "1.25rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem", borderBottom: "1px solid rgba(176, 141, 87, 0.15)", paddingBottom: "0.6rem" }}>
+                      <MapPin size={16} color="#d4af37" />
+                      <h5 style={{ color: "#d4af37", fontSize: "0.92rem", fontWeight: 700, margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Section B · Business Address & Location (Questions 13 to 18)
+                      </h5>
+                    </div>
+
                     <div className="form-grid" style={{ fontSize: "0.82rem" }}>
-                      <div className="col-4">
-                        <span style={{ color: "rgba(245, 241, 232, 0.5)" }}>Registered Entity:</span>
-                        <div style={{ fontWeight: 600 }}>{selectedApp.data.registeredBusinessName}</div>
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>13. Country:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.country || "Not specified"}</div>
                       </div>
-                      <div className="col-4">
-                        <span style={{ color: "rgba(245, 241, 232, 0.5)" }}>Trading Name:</span>
-                        <div style={{ fontWeight: 600 }}>{selectedApp.data.tradingName}</div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>14. County / State / Region:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.county || "N/A"}</div>
                       </div>
-                      <div className="col-4">
-                        <span style={{ color: "rgba(245, 241, 232, 0.5)" }}>BRS Reg Number:</span>
-                        <div style={{ fontWeight: 600 }}>{selectedApp.data.businessRegistrationNumber}</div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>15. Town / City:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.townCity || "N/A"}</div>
                       </div>
-                      <div className="col-4">
-                        <span style={{ color: "rgba(245, 241, 232, 0.5)" }}>Owner Name:</span>
-                        <div style={{ fontWeight: 600 }}>{selectedApp.data.ownerFullName}</div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>16. Estate / Area:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.estateArea || "N/A"}</div>
                       </div>
-                      <div className="col-4">
-                        <span style={{ color: "rgba(245, 241, 232, 0.5)" }}>Authorized Rep:</span>
-                        <div style={{ fontWeight: 600 }}>{selectedApp.data.authContactName}</div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>17. Street Name / Building Name:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.streetBuilding || "N/A"}</div>
                       </div>
-                      <div className="col-4">
-                        <span style={{ color: "rgba(245, 241, 232, 0.5)" }}>Official Email:</span>
-                        <div style={{ fontWeight: 600 }}>{selectedApp.data.businessEmail}</div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>18. Postal Address:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.postalAddress || "N/A"}</div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Products */}
-                  <div>
-                    <h5 style={{ color: "#d4af37", fontSize: "0.9rem", fontWeight: 700, marginBottom: "0.75rem" }}>
-                      Participating Products & Proposed Pricing
-                    </h5>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                      {(selectedApp.data.products || []).filter((p) => p.selected).map((p) => (
-                        <div
-                          key={p.id}
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            padding: "0.5rem 0.75rem",
-                            background: "rgba(10, 10, 10, 0.6)",
-                            borderRadius: "6px",
-                            fontSize: "0.82rem",
-                          }}
-                        >
-                          <span>{p.productName} ({p.servingType})</span>
-                          <span style={{ color: "#d4af37", fontWeight: 600 }}>
-                            Std: {p.currency} {p.standardPrice?.toLocaleString()} · Slot Promo: {p.servingType === "Bottle" ? "5%–25%" : p.servingType === "Glass" ? "10%–50%" : "5%–25%"} off
+                  {/* Section C: Business Operations (Q19 - Q23) */}
+                  <div style={{ background: "rgba(16, 16, 16, 0.6)", border: "1px solid rgba(176, 141, 87, 0.2)", borderRadius: "12px", padding: "1.25rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem", borderBottom: "1px solid rgba(176, 141, 87, 0.15)", paddingBottom: "0.6rem" }}>
+                      <Clock size={16} color="#d4af37" />
+                      <h5 style={{ color: "#d4af37", fontSize: "0.92rem", fontWeight: 700, margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Section C · Business Operations (Questions 19 to 23)
+                      </h5>
+                    </div>
+
+                    <div className="form-grid" style={{ fontSize: "0.82rem" }}>
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>19. Opening Hours:</span>
+                        <div style={{ fontWeight: 600, color: "#f5f1e8" }}>{selectedApp.data.openingHours || "N/A"}</div>
+                      </div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>21. Outlet Category:</span>
+                        <div style={{ fontWeight: 600, color: "#d4af37" }}>{selectedApp.data.outletCategory || "N/A"}</div>
+                      </div>
+
+                      <div className="col-12">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "0.4rem" }}>20. Operating Days:</span>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                          {(selectedApp.data.operatingDays && selectedApp.data.operatingDays.length > 0) ? (
+                            selectedApp.data.operatingDays.map((day) => (
+                              <span key={day} style={{ background: "rgba(176, 141, 87, 0.15)", border: "1px solid rgba(176, 141, 87, 0.35)", color: "#f5f1e8", padding: "0.2rem 0.6rem", borderRadius: "6px", fontSize: "0.75rem", fontWeight: 500 }}>
+                                {day}
+                              </span>
+                            ))
+                          ) : (
+                            <span style={{ color: "rgba(245, 241, 232, 0.5)" }}>No days specified</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>22. Sells Alcoholic Beverages:</span>
+                        <div>
+                          <span style={{ display: "inline-block", padding: "0.2rem 0.55rem", borderRadius: "6px", fontSize: "0.75rem", fontWeight: 600, background: selectedApp.data.sellsAlcohol ? "rgba(129, 199, 132, 0.15)" : "rgba(229, 115, 115, 0.15)", color: selectedApp.data.sellsAlcohol ? "#81c784" : "#e57373", border: `1px solid ${selectedApp.data.sellsAlcohol ? "rgba(129, 199, 132, 0.3)" : "rgba(229, 115, 115, 0.3)"}` }}>
+                            {selectedApp.data.sellsAlcohol ? "Yes · Currently Sells Alcohol" : "No"}
                           </span>
                         </div>
-                      ))}
-                    </div>
-                  </div>
+                      </div>
 
-                  {/* Financial Details (Restricted) */}
-                  {selectedApp.data.requiresSettlement && (
-                    <div>
-                      <h5 style={{ color: "#d4af37", fontSize: "0.9rem", fontWeight: 700, marginBottom: "0.75rem" }}>
-                        Financial Settlement Information (Restricted)
-                      </h5>
-                      <div className="form-grid" style={{ fontSize: "0.82rem" }}>
-                        <div className="col-4">
-                          <span style={{ color: "rgba(245, 241, 232, 0.5)" }}>Bank Name:</span>
-                          <div style={{ fontWeight: 600 }}>{selectedApp.data.settlementBankName}</div>
-                        </div>
-                        <div className="col-4">
-                          <span style={{ color: "rgba(245, 241, 232, 0.5)" }}>Account Name:</span>
-                          <div style={{ fontWeight: 600 }}>{selectedApp.data.settlementAccountName}</div>
-                        </div>
-                        <div className="col-4">
-                          <span style={{ color: "rgba(245, 241, 232, 0.5)" }}>Account Number:</span>
-                          <div style={{ fontWeight: 600 }}>{selectedApp.data.settlementAccountNumber}</div>
+                      <div className="col-6">
+                        <span style={{ color: "rgba(245, 241, 232, 0.5)", display: "block", marginBottom: "2px" }}>23. Designated Bar Manager:</span>
+                        <div>
+                          <span style={{ display: "inline-block", padding: "0.2rem 0.55rem", borderRadius: "6px", fontSize: "0.75rem", fontWeight: 600, background: selectedApp.data.hasBarManager ? "rgba(129, 199, 132, 0.15)" : "rgba(229, 115, 115, 0.15)", color: selectedApp.data.hasBarManager ? "#81c784" : "#e57373", border: `1px solid ${selectedApp.data.hasBarManager ? "rgba(129, 199, 132, 0.3)" : "rgba(229, 115, 115, 0.3)"}` }}>
+                            {selectedApp.data.hasBarManager ? "Yes · Has Bar Manager" : "No"}
+                          </span>
                         </div>
                       </div>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Section D: Uploaded Compliance Documents (Q24 & Q25) */}
+                  <div style={{ background: "rgba(16, 16, 16, 0.6)", border: "1px solid rgba(176, 141, 87, 0.2)", borderRadius: "12px", padding: "1.25rem" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem", borderBottom: "1px solid rgba(176, 141, 87, 0.15)", paddingBottom: "0.6rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <FileText size={16} color="#d4af37" />
+                        <h5 style={{ color: "#d4af37", fontSize: "0.92rem", fontWeight: 700, margin: 0, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                          Section D · Compliance Documents (Questions 24 & 25)
+                        </h5>
+                      </div>
+                      <span style={{ fontSize: "0.75rem", color: "rgba(245, 241, 232, 0.6)" }}>
+                        {(selectedApp.data.documents || []).length} Document(s) Uploaded
+                      </span>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.65rem" }}>
+                      {(selectedApp.data.documents || []).length === 0 ? (
+                        <div style={{ padding: "1.5rem", textAlign: "center", color: "rgba(245, 241, 232, 0.4)", fontSize: "0.82rem" }}>
+                          No documents have been uploaded for this application yet.
+                        </div>
+                      ) : (
+                        (selectedApp.data.documents || []).map((doc, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              padding: "0.85rem 1.1rem",
+                              background: "rgba(10, 10, 10, 0.7)",
+                              border: "1px solid rgba(176, 141, 87, 0.25)",
+                              borderRadius: "8px",
+                              fontSize: "0.85rem",
+                              flexWrap: "wrap",
+                              gap: "0.75rem",
+                            }}
+                          >
+                            <div>
+                              <div style={{ fontWeight: 600, color: "#f5f1e8", display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                <FileText size={14} color="#d4af37" />
+                                <span>{doc.documentType}</span>
+                              </div>
+                              <div style={{ color: "rgba(245, 241, 232, 0.5)", fontSize: "0.75rem", marginTop: "2px" }}>
+                                File: {doc.fileName} {doc.fileSize ? `(${Math.round(doc.fileSize / 1024)} KB)` : ""}
+                              </div>
+                            </div>
+                            {doc.fileUrl && (
+                              <a
+                                href={doc.fileUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn-secondary"
+                                style={{ padding: "0.35rem 0.85rem", fontSize: "0.75rem", display: "inline-flex", alignItems: "center", gap: "0.4rem" }}
+                              >
+                                <ExternalLink size={12} /> View / Download Document
+                              </a>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 

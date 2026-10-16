@@ -90,6 +90,9 @@ export interface PartnerFormData {
   monthlySalesVolume: string;
   sellsAlcohol: boolean;
   hasBarManager: boolean;
+  managerFullName?: string;
+  managerPhone?: string;
+  outletCategory?: string;
   additionalOutlets: AdditionalOutlet[];
 
   // Step 2: Owner and Authorized Representative

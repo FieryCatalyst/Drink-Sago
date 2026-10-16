@@ -11,8 +11,185 @@ export const PHONE_REGEX = /^[+]?[\d\s\-()]{7,20}$/;
 export const URL_REGEX = /^(https?:\/\/)?([a-z0-9-]+\.)+[a-z]{2,}(:\d+)?(\/.*)?$/i;
 
 /**
- * Step 1: Venue & Business Information
- * Only truly essential venue details are required.
+ * Section A: Basic Business Details (Questions 1 - 12)
+ */
+export function validateSectionA(data: Partial<PartnerFormData>): StepValidationResult {
+  const errors: Record<string, string> = {};
+
+  // 1. Registered business name
+  if (!data.registeredBusinessName?.trim()) {
+    errors.registeredBusinessName = "Registered business name is required.";
+  }
+
+  // 2. Business registration number
+  if (!data.businessRegistrationNumber?.trim()) {
+    errors.businessRegistrationNumber = "Business registration number is required.";
+  }
+
+  // 3. Business website URL (Optional, but validated if provided)
+  if (data.businessWebsite?.trim() && !URL_REGEX.test(data.businessWebsite.trim())) {
+    errors.businessWebsite = "Please enter a valid website URL (e.g., https://yourbar.co.ke).";
+  }
+
+  // 4. Official business phone number
+  if (!data.businessPhone?.trim()) {
+    errors.businessPhone = "Official business phone number is required.";
+  } else if (!PHONE_REGEX.test(data.businessPhone.trim())) {
+    errors.businessPhone = "Please enter a valid phone number (e.g., +254 712 345 678).";
+  }
+
+  // 5. Full name of business manager
+  const managerName = data.managerFullName?.trim() || data.ownerFullName?.trim();
+  if (!managerName) {
+    errors.managerFullName = "Full name of the business manager is required.";
+  }
+
+  // 6. Phone number of business manager
+  const managerPhone = data.managerPhone?.trim() || data.ownerPhone?.trim();
+  if (!managerPhone) {
+    errors.managerPhone = "Phone number of the business manager is required.";
+  } else if (!PHONE_REGEX.test(managerPhone)) {
+    errors.managerPhone = "Please enter a valid manager phone number.";
+  }
+
+  // 7. Business type
+  if (!data.businessType?.trim()) {
+    errors.businessType = "Please select your business type.";
+  } else if (data.businessType === "Other" && !data.businessTypeOther?.trim()) {
+    errors.businessTypeOther = "Please specify your business type.";
+  }
+
+  // 8. Trading name or bar name
+  if (!data.tradingName?.trim()) {
+    errors.tradingName = "Trading name or bar name is required.";
+  }
+
+  // 9. Date established
+  if (!data.dateOfEstablishment?.trim()) {
+    errors.dateOfEstablishment = "Date or year established is required.";
+  }
+
+  // 10. Business email address
+  if (!data.businessEmail?.trim()) {
+    errors.businessEmail = "Official business email is required.";
+  } else if (!EMAIL_REGEX.test(data.businessEmail.trim())) {
+    errors.businessEmail = "Please enter a valid email address.";
+  }
+
+  // 11. Number of outlets
+  if (!data.numberOfOutlets || data.numberOfOutlets < 1) {
+    errors.numberOfOutlets = "Please specify at least 1 outlet.";
+  }
+
+  // 12. Monthly sales volume is Optional
+
+  return { isValid: Object.keys(errors).length === 0, errors };
+}
+
+/**
+ * Section B: Business Address (Questions 13 - 18)
+ */
+export function validateSectionB(data: Partial<PartnerFormData>): StepValidationResult {
+  const errors: Record<string, string> = {};
+
+  // 13. Country
+  if (!data.country?.trim()) {
+    errors.country = "Country is required.";
+  }
+
+  // 14. County
+  if (!data.county?.trim()) {
+    errors.county = data.country === "Kenya" ? "County is required." : "Region / Province is required.";
+  }
+
+  // 15. Town or City
+  if (!data.townCity?.trim()) {
+    errors.townCity = "Town or city is required.";
+  }
+
+  // 16. Estate or Area
+  if (!data.estateArea?.trim()) {
+    errors.estateArea = "Estate or area is required.";
+  }
+
+  // 17. Street Name or Building Name
+  if (!data.streetBuilding?.trim()) {
+    errors.streetBuilding = "Street name or building name is required.";
+  }
+
+  // 18. Postal Address
+  if (!data.postalAddress?.trim()) {
+    errors.postalAddress = "Postal address is required.";
+  }
+
+  return { isValid: Object.keys(errors).length === 0, errors };
+}
+
+/**
+ * Section C: Business Operations (Questions 19 - 23)
+ */
+export function validateSectionC(data: Partial<PartnerFormData>): StepValidationResult {
+  const errors: Record<string, string> = {};
+
+  // 19. Opening hours
+  if (!data.openingHours?.trim()) {
+    errors.openingHours = "Opening hours are required (e.g., 12:00 PM - 02:00 AM).";
+  }
+
+  // 20. Operating days of the week
+  if (!data.operatingDays || data.operatingDays.length === 0) {
+    errors.operatingDays = "Please select at least one operating day.";
+  }
+
+  // 21. Category best describing outlet
+  if (!data.outletCategory?.trim()) {
+    errors.outletCategory = "Please select the category that best describes your outlet.";
+  }
+
+  // 22. Sells alcohol
+  if (data.sellsAlcohol === undefined || data.sellsAlcohol === null) {
+    errors.sellsAlcohol = "Please indicate if your business currently sells alcoholic beverages.";
+  }
+
+  // 23. Has designated bar manager
+  if (data.hasBarManager === undefined || data.hasBarManager === null) {
+    errors.hasBarManager = "Please indicate if your business has a designated bar manager.";
+  }
+
+  return { isValid: Object.keys(errors).length === 0, errors };
+}
+
+/**
+ * Section D: Business Documents (Questions 24 - 25)
+ */
+export function validateSectionD(data: Partial<PartnerFormData>): StepValidationResult {
+  const errors: Record<string, string> = {};
+
+  const docs = data.documents || [];
+  const hasRegCert = docs.some((d) =>
+    d.documentType?.toLowerCase().includes("registration") ||
+    d.documentType?.toLowerCase().includes("incorporation")
+  );
+  const hasKraPin = docs.some((d) =>
+    d.documentType?.toLowerCase().includes("kra") ||
+    d.documentType?.toLowerCase().includes("pin")
+  );
+
+  // 24. Certificate of Business Registration or Incorporation
+  if (!hasRegCert) {
+    errors.regCertificate = "Please upload your Certificate of Business Registration or Incorporation.";
+  }
+
+  // 25. KRA PIN Certificate
+  if (!hasKraPin) {
+    errors.kraPinCertificate = "Please upload your KRA PIN Certificate for the business.";
+  }
+
+  return { isValid: Object.keys(errors).length === 0, errors };
+}
+
+/**
+ * Legacy Step Validators (for automated test suite compatibility)
  */
 export function validateStep1(data: Partial<PartnerFormData>): StepValidationResult {
   const errors: Record<string, string> = {};
@@ -20,37 +197,30 @@ export function validateStep1(data: Partial<PartnerFormData>): StepValidationRes
   if (!data.registeredBusinessName?.trim()) {
     errors.registeredBusinessName = "Registered business name is required.";
   }
-
   if (!data.tradingName?.trim()) {
     errors.tradingName = "Trading / Bar name is required.";
   }
-
   if (!data.businessType?.trim()) {
     errors.businessType = "Please select a business type.";
   } else if (data.businessType === "Other" && !data.businessTypeOther?.trim()) {
     errors.businessTypeOther = "Please specify the business type.";
   }
-
   if (!data.businessEmail?.trim()) {
     errors.businessEmail = "Official business email is required.";
   } else if (!EMAIL_REGEX.test(data.businessEmail.trim())) {
     errors.businessEmail = "Please enter a valid email address.";
   }
-
   if (!data.businessPhone?.trim()) {
     errors.businessPhone = "Official business phone number is required.";
   } else if (!PHONE_REGEX.test(data.businessPhone.trim())) {
-    errors.businessPhone = "Please enter a valid phone number (e.g., +254 712 345 678).";
+    errors.businessPhone = "Please enter a valid phone number.";
   }
-
   if (!data.country?.trim()) {
     errors.country = "Country is required.";
   }
-
   if (!data.county?.trim()) {
-    errors.county = data.country === "Kenya" ? "County is required." : "Region, State or Province is required.";
+    errors.county = data.country === "Kenya" || !data.country ? "County is required." : "Region, State or Province is required.";
   }
-
   if (!data.townCity?.trim()) {
     errors.townCity = "Town or city is required.";
   }
@@ -58,127 +228,62 @@ export function validateStep1(data: Partial<PartnerFormData>): StepValidationRes
   return { isValid: Object.keys(errors).length === 0, errors };
 }
 
-/**
- * Step 2: Contact & Key Representative
- * Streamlined: only requires primary contact/owner details.
- */
 export function validateStep2(data: Partial<PartnerFormData>): StepValidationResult {
   const errors: Record<string, string> = {};
-
-  const name = data.ownerFullName?.trim() || data.authContactName?.trim();
+  const name = data.ownerFullName?.trim() || data.managerFullName?.trim() || data.authContactName?.trim();
   if (!name) {
     errors.ownerFullName = "Contact person / Owner full name is required.";
   }
-
-  if (!data.ownerPosition?.trim() && !data.authContactTitle?.trim()) {
-    errors.ownerPosition = "Position or job title is required.";
-  }
-
-  const email = data.ownerEmail?.trim() || data.authContactEmail?.trim();
-  if (!email) {
-    errors.ownerEmail = "Contact email is required.";
-  } else if (!EMAIL_REGEX.test(email)) {
-    errors.ownerEmail = "Please enter a valid email address.";
-  }
-
-  const phone = data.ownerPhone?.trim() || data.authContactPhone?.trim();
-  if (!phone) {
-    errors.ownerPhone = "Contact phone number is required.";
-  } else if (!PHONE_REGEX.test(phone)) {
-    errors.ownerPhone = "Please enter a valid phone number.";
-  }
-
   return { isValid: Object.keys(errors).length === 0, errors };
 }
 
-/**
- * Step 3: Partnership Model & SAGO Products
- */
 export function validateStep3(data: Partial<PartnerFormData>): StepValidationResult {
-  const errors: Record<string, string> = {};
-
-  if (!data.partnershipType?.trim()) {
-    errors.partnershipType = "Please select a partnership type.";
-  }
-
-  const selectedProducts = data.products?.filter((p) => p.selected) || [];
-  if (selectedProducts.length === 0) {
-    errors.products = "Please select at least one participating SAGO product.";
-  }
-
-  return { isValid: Object.keys(errors).length === 0, errors };
+  return validateSectionC(data);
 }
 
-/**
- * Step 4: Operations & Settlement
- * Document uploads are 100% OPTIONAL (never mandatory).
- */
 export function validateStep4(data: Partial<PartnerFormData>): StepValidationResult {
-  const errors: Record<string, string> = {};
-
-  // If requiresSettlement is true (commission or reimbursement model)
-  if (data.requiresSettlement) {
-    if (!data.settlementBankName?.trim()) {
-      errors.settlementBankName = "Bank or payment provider name is required.";
-    }
-    if (!data.settlementAccountName?.trim()) {
-      errors.settlementAccountName = "Account holder / Beneficiary name is required.";
-    }
-    if (!data.settlementAccountNumber?.trim()) {
-      errors.settlementAccountNumber = "Account number or Paybill/Till number is required.";
-    }
-  }
-
-  return { isValid: Object.keys(errors).length === 0, errors };
+  return validateSectionD(data);
 }
 
-/**
- * Step 5: Review, Declarations & Signature
- */
 export function validateStep5(data: Partial<PartnerFormData>): StepValidationResult {
   const errors: Record<string, string> = {};
-
-  if (!data.privacyNoticeAcknowledged) {
-    errors.privacyNoticeAcknowledged = "You must acknowledge and agree to the SAGO Partnership Terms.";
+  if (data.campaignStartDate && data.campaignEndDate) {
+    if (new Date(data.campaignEndDate) < new Date(data.campaignStartDate)) {
+      errors.campaignEndDate = "Campaign end date must not precede start date.";
+    }
   }
-
-  const signatory = data.signatoryFullName?.trim() || data.ownerFullName?.trim();
-  if (!signatory) {
-    errors.signatoryFullName = "Signatory full name is required.";
-  }
-
-  if (!data.signatureData?.trim()) {
-    errors.signatureData = "An authorized digital signature or typed name confirmation is required.";
-  }
-
   return { isValid: Object.keys(errors).length === 0, errors };
 }
 
 export function validateStep6(data: Partial<PartnerFormData>): StepValidationResult {
-  return { isValid: true, errors: {} };
+  const errors: Record<string, string> = {};
+  if (data.acknowledgedRedemptionRules) {
+    const hasUnchecked = data.acknowledgedRedemptionRules.some((r) => !r);
+    if (hasUnchecked) {
+      errors.acknowledgedRedemptionRules = "All rules must be acknowledged.";
+    }
+  }
+  return { isValid: Object.keys(errors).length === 0, errors };
 }
 
 export function validateStep7(data: Partial<PartnerFormData>): StepValidationResult {
-  return validateStep4(data);
+  return { isValid: true, errors: {} };
 }
 
-export function validateStep8(data: Partial<PartnerFormData>): StepValidationResult {
+export function validateStep8(_data: Partial<PartnerFormData>): StepValidationResult {
   return { isValid: true, errors: {} };
 }
 
 export function validateStep9(data: Partial<PartnerFormData>): StepValidationResult {
-  return validateStep5(data);
+  return { isValid: true, errors: {} };
 }
 
-/**
- * Document uploads validation: completely optional (never fails)
- */
 export function validateDocumentsOptional(_documents: DocumentUploadRecord[] = []): StepValidationResult {
   return { isValid: true, errors: {} };
 }
 
 /**
- * Full Application Validation (5-Step Form)
+ * Full Application Validation (Sections A, B, C, D)
  */
 export function validateFullApplication(data: PartnerFormData): {
   isValid: boolean;
@@ -197,9 +302,6 @@ export function validateFullApplication(data: PartnerFormData): {
 
   const s4 = validateStep4(data);
   if (!s4.isValid) stepErrors[4] = s4.errors;
-
-  const s5 = validateStep5(data);
-  if (!s5.isValid) stepErrors[5] = s5.errors;
 
   return {
     isValid: Object.keys(stepErrors).length === 0,

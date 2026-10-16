@@ -25,7 +25,7 @@ const products: Product[] = [
     type: "Premium Oak Whisky",
     abv: "40% ABV",
     size: "750 ml · 200 ml · 180 ml",
-    image: "/assets/Sago gold reseve whisky bottle.png",
+    image: "/assets/Sago Gold Reserve Whisky Bottle.png",
     nose: "TOASTED OAK WITH DELICATE VANILLA",
     taste: "SMOOTH, RICH, AND FRESH FLORALS",
     finish: "HINTS OF PLEASANT NUTTINESS, TOASTED WOOD AND SWEET VANILLA BEAN.",

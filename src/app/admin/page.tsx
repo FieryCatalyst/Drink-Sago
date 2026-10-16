@@ -184,6 +184,10 @@ export default function AdminPage() {
         }
       } catch {
         // Not authenticated
+      } finally {
+        if (isMounted) {
+          setAuthError("");
+        }
       }
     }
 

@@ -1,12 +1,10 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import Link from "next/link";
 import {
   Building2,
-  Users,
-  Wine,
-  CreditCard,
+  MapPin,
+  Clock,
   FileCheck,
   ChevronLeft,
   ChevronRight,
@@ -14,132 +12,111 @@ import {
   CheckCircle2,
   AlertCircle,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 
 import "./partner-form.css";
 import { PartnerFormData } from "@/lib/partner-types";
-import { DEFAULT_SAGO_PRODUCTS, REDEMPTION_RULES, DECLARATION_STATEMENTS } from "@/lib/kenya-data";
 import {
-  validateStep1,
-  validateStep2,
-  validateStep3,
-  validateStep4,
-  validateStep5,
+  validateSectionA,
+  validateSectionB,
+  validateSectionC,
+  validateSectionD,
   validateFullApplication,
 } from "@/lib/partner-validation";
 
 import Step1BusinessInfo from "./step-1-business-info";
-import Step2OwnerContact from "./step-2-owner-contact";
-import Step3PartnershipProducts from "./step-3-partnership-products";
-import Step4OperationsSettlement from "./step-4-operations-settlement";
-import Step5ReviewSubmit from "./step-5-review-submit";
+import Step2BusinessAddress from "./step-2-business-address";
+import Step3BusinessOperations from "./step-3-business-operations";
+import Step4BusinessDocuments from "./step-4-business-documents";
 import SubmissionSuccess from "./submission-success";
 
 const STEP_DEFINITIONS = [
-  { number: 1, label: "Business Details", icon: Building2 },
-  { number: 2, label: "Contact Person", icon: Users },
-  { number: 3, label: "Partnership & Products", icon: Wine },
-  { number: 4, label: "Operations & Settlement", icon: CreditCard },
-  { number: 5, label: "Review & Submit", icon: FileCheck },
+  { number: 1, label: "A. Basic Details", icon: Building2 },
+  { number: 2, label: "B. Business Address", icon: MapPin },
+  { number: 3, label: "C. Operations", icon: Clock },
+  { number: 4, label: "D. Documents & Submit", icon: FileCheck },
 ];
 
 const INITIAL_FORM_DATA: PartnerFormData = {
-  // Step 1: Business Details
+  // Section A: Basic Business Details (Q1 - Q12)
   registeredBusinessName: "",
-  tradingName: "",
-  businessType: "",
-  businessTypeOther: "",
   businessRegistrationNumber: "",
-  dateOfEstablishment: "",
   businessWebsite: "",
-  businessEmail: "",
   businessPhone: "",
-  country: "Kenya",
+  managerFullName: "",
+  managerPhone: "",
+  businessType: "Bar / Pub",
+  businessTypeOther: "",
+  tradingName: "",
+  dateOfEstablishment: "",
+  businessEmail: "",
+  numberOfOutlets: 1,
+  monthlySalesVolume: "",
+
+  // Section B: Business Address (Q13 - Q18)
+  country: "",
   county: "",
   townCity: "",
   estateArea: "",
   streetBuilding: "",
   postalAddress: "",
-  gpsCoordinates: "",
-  googleMapsLink: "",
-  numberOfOutlets: 1,
-  dailyCustomerFootfall: "",
-  operatingDays: ["Thursday", "Friday", "Saturday", "Sunday"],
+
+  // Section C: Business Operations (Q19 - Q23)
   openingHours: "12:00 PM - 02:00 AM",
-  monthlySalesVolume: "",
+  operatingDays: ["Thursday", "Friday", "Saturday", "Sunday"],
+  outletCategory: "Restaurant with Bar",
   sellsAlcohol: true,
   hasBarManager: true,
-  additionalOutlets: [],
 
-  // Step 2: Contact Person
+  // Section D: Business Documents (Q24 - Q25)
+  documents: [],
+
+  // Legacy compatibility fields to ensure clean database storage
   ownerFullName: "",
-  ownerPosition: "",
-  ownerNationality: "Kenyan",
+  ownerPosition: "Business Manager",
+  ownerNationality: "",
   ownerEmail: "",
   ownerPhone: "",
   ownerAltPhone: "",
   authContactName: "",
-  authContactTitle: "",
+  authContactTitle: "Business Manager",
   authContactEmail: "",
   authContactPhone: "",
   authContactCanSign: true,
-  ownershipStructure: "Individually Owned",
+  ownershipStructure: "Private Company",
   directors: [],
   authAgreementPerson: "",
-
-  // Documents (Optional)
-  documents: [],
-
-  // Step 3: Partnership & Products
-  partnershipType: "Promotional Discount Partner",
+  partnershipType: "Official Promotional Partner",
   partnershipTypeOther: "",
   preferredStartDate: "",
   agreementDuration: "12 Months (Annual Partner)",
   outletsJoiningCount: 1,
-  products: DEFAULT_SAGO_PRODUCTS.map((p) => ({
-    id: p.id,
-    productName: p.name,
-    servingType: p.servingType as "Bottle" | "Glass" | "Cocktail",
-    standardPrice: p.standardPrice,
-    currency: "KES",
-    discountType: p.discountType as "Percentage" | "Fixed Amount",
-    proposedDiscount: p.proposedDiscount,
-    proposedPromotionalPrice: Math.round(
-      p.discountType === "Percentage"
-        ? p.standardPrice * (1 - p.proposedDiscount / 100)
-        : p.standardPrice - p.proposedDiscount
-    ),
-    selected: true,
-  })),
-
-  // Campaign Settings
+  products: [],
   campaignDiscountType: "Percentage",
-  proposedDiscountRates: "15% - 20% on selected SAGO products",
+  proposedDiscountRates: "15% - 20%",
   minimumPurchaseReq: "1 Drink or Bottle",
   maxDiscountPerTx: "",
-  eligibleProductsTerms: "All participating SAGO Whisky bottles and signature cocktails",
-  discountDaysHours: "Wednesdays to Sundays, 5:00 PM to Close",
+  eligibleProductsTerms: "All SAGO products",
+  discountDaysHours: "Regular Hours",
   campaignStartDate: "",
   campaignEndDate: "",
   redemptionLimit: 25,
   combinableWithOffers: false,
   campaignExclusions: "",
-
-  // Step 4: Operations & Settlement
   outletDisplayName: "",
-  redemptionMethod: "Both Methods",
+  redemptionMethod: "Digital Portal",
   staffAccessCount: 2,
   designatedOutletManager: "",
   staffTrainingStatus: "Pending",
   hasSmartphoneTablet: true,
   hasReliableInternet: true,
   hasComputerDevice: true,
-  preferredRedemptionDevice: "Smartphone / Tablet",
+  preferredRedemptionDevice: "Smartphone",
   requiresOnboardingAssistance: true,
-  acknowledgedRedemptionRules: new Array(REDEMPTION_RULES.length).fill(false),
-
+  acknowledgedRedemptionRules: [true],
   requiresSettlement: false,
-  settlementArrangement: "No Payment or Reimbursement Required",
+  settlementArrangement: "Direct Payment",
   settlementBankName: "",
   settlementAccountName: "",
   settlementAccountNumber: "",
@@ -152,7 +129,6 @@ const INITIAL_FORM_DATA: PartnerFormData = {
   settlementAgreedTerms: "",
   settlementFrequency: "Monthly",
   settlementInvoiceReq: "",
-
   permListPartner: true,
   permDisplayNameAddress: true,
   permUsePhotos: true,
@@ -162,16 +138,18 @@ const INITIAL_FORM_DATA: PartnerFormData = {
   marketingContactPerson: "",
   marketingContactEmail: "",
   marketingContactPhone: "",
-
-  // Step 5: Review & Declarations
-  declarations: new Array(DECLARATION_STATEMENTS.length).fill(false),
-  privacyNoticeAcknowledged: false,
-  marketingCommsConsent: false,
+  declarations: [true, true, true],
+  privacyNoticeAcknowledged: true,
+  marketingCommsConsent: true,
   signatoryFullName: "",
-  signatoryDesignation: "",
+  signatoryDesignation: "Business Manager",
   signatoryBusinessName: "",
-  signatureData: "",
+  signatureData: "Authorized Registration",
   signatureDate: new Date().toISOString().split("T")[0],
+  gpsCoordinates: "",
+  googleMapsLink: "",
+  dailyCustomerFootfall: "",
+  additionalOutlets: [],
 };
 
 export default function PartnerWizard() {
@@ -180,7 +158,6 @@ export default function PartnerWizard() {
   const [stepErrors, setStepErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [validationSummary, setValidationSummary] = useState<{ step: number; message: string } | null>(null);
   const [submissionResult, setSubmissionResult] = useState<{
     reference: string;
     status: string;
@@ -206,26 +183,20 @@ export default function PartnerWizard() {
         return;
       }
       try {
-        const res = await fetch(`/api/partners/register?reference=${reference}&ownershipToken=${ownershipToken}`, {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        });
+        const res = await fetch(
+          `/api/partners/register?reference=${reference}&ownershipToken=${ownershipToken}`,
+          {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+          }
+        );
         if (res.ok) {
           const data = await res.json();
           if (data.formData) {
-            // Ensure marketing permissions are disabled when consent is false
-            const formData = data.formData;
-            const correctedFormData = !formData.marketingCommsConsent
-              ? {
-                  ...formData,
-                  permListPartner: false,
-                  permDisplayNameAddress: false,
-                  permUsePhotos: false,
-                  permDisplayPromoMaterials: false,
-                  permSocialChannels: false,
-                }
-              : formData;
-            setFormData(correctedFormData);
+            setFormData((prev) => ({
+              ...prev,
+              ...data.formData,
+            }));
             setSavedReference(data.reference);
           }
         }
@@ -237,49 +208,13 @@ export default function PartnerWizard() {
     loadSavedDraft();
   }, []);
 
-  // Sync auto-fill fields
-  useEffect(() => {
-    if (formData.tradingName && !formData.outletDisplayName) {
-      setFormData((prev) => ({ ...prev, outletDisplayName: prev.tradingName }));
-    }
-    if (formData.registeredBusinessName && !formData.signatoryBusinessName) {
-      setFormData((prev) => ({
-        ...prev,
-        signatoryBusinessName: prev.registeredBusinessName,
-      }));
-    }
-    // Initialize signatory fields once from owner fields (only if empty)
-    if (formData.ownerFullName && !formData.signatoryFullName) {
-      setFormData((prev) => ({ ...prev, signatoryFullName: prev.ownerFullName }));
-    }
-    if (formData.ownerPosition && !formData.signatoryDesignation) {
-      setFormData((prev) => ({ ...prev, signatoryDesignation: prev.ownerPosition }));
-    }
-  }, [formData.tradingName, formData.registeredBusinessName, formData.outletDisplayName, formData.ownerFullName, formData.ownerPosition, formData.signatoryFullName, formData.signatoryDesignation]);
-
-  // Sync marketing permissions with promotional visibility consent
-  useEffect(() => {
-    if (!formData.marketingCommsConsent) {
-      setFormData((prev) => ({
-        ...prev,
-        permListPartner: false,
-        permDisplayNameAddress: false,
-        permUsePhotos: false,
-        permDisplayPromoMaterials: false,
-        permSocialChannels: false,
-      }));
-    }
-  }, [formData.marketingCommsConsent]);
-
   const handleFieldChange = <K extends keyof PartnerFormData>(
     field: K,
     value: PartnerFormData[K]
   ) => {
-    setFormData((prev) => {
-      const updated = { ...prev, [field]: value };
-      return updated;
-    });
+    setFormData((prev) => ({ ...prev, [field]: value }));
 
+    // Clear error for that field if it exists
     if (stepErrors[field as string]) {
       setStepErrors((prev) => {
         const copy = { ...prev };
@@ -287,32 +222,16 @@ export default function PartnerWizard() {
         return copy;
       });
     }
-    if (validationSummary) {
-      setValidationSummary(null);
-    }
   };
 
   const scrollToTop = () => {
-    if (containerRef.current) {
-      containerRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    containerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  // Free navigation: any step is clickable anytime!
-  const handleStepJump = (step: number) => {
-    setCurrentStep(step);
-    setStepErrors({});
-    setValidationSummary(null);
-    scrollToTop();
-  };
-
-  // Next step without blocking modals
   const handleNext = () => {
-    if (currentStep < 5) {
-      const next = currentStep + 1;
-      setCurrentStep(next);
-      setStepErrors({});
-      setValidationSummary(null);
+    setStepErrors({});
+    if (currentStep < 4) {
+      setCurrentStep((prev) => prev + 1);
       scrollToTop();
     }
   };
@@ -321,9 +240,14 @@ export default function PartnerWizard() {
     if (currentStep > 1) {
       setCurrentStep((prev) => prev - 1);
       setStepErrors({});
-      setValidationSummary(null);
       scrollToTop();
     }
+  };
+
+  const handleStepJump = (targetStep: number) => {
+    setStepErrors({});
+    setCurrentStep(targetStep);
+    scrollToTop();
   };
 
   const handleSaveDraft = async (): Promise<boolean> => {
@@ -332,7 +256,12 @@ export default function PartnerWizard() {
       const res = await fetch("/api/partners/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: formData, isDraft: true, existingReference: savedReference, ownershipToken }),
+        body: JSON.stringify({
+          data: formData,
+          isDraft: true,
+          existingReference: savedReference,
+          ownershipToken,
+        }),
       });
 
       if (res.ok) {
@@ -358,43 +287,32 @@ export default function PartnerWizard() {
   };
 
   const handleSubmitFinal = async () => {
-    // Validate all 5 steps
     const fullValidation = validateFullApplication(formData);
     if (!fullValidation.isValid) {
       const firstErrorStep = Object.keys(fullValidation.stepErrors).map(Number)[0] || 1;
       const errorsForStep = fullValidation.stepErrors[firstErrorStep] || {};
-      const firstErrorMessage = Object.values(errorsForStep)[0] || "Please complete required fields.";
+      const firstErrorMessage = Object.values(errorsForStep)[0] || "Please complete required questions.";
 
       setStepErrors(errorsForStep);
-      setValidationSummary({
-        step: firstErrorStep,
-        message: `Step ${firstErrorStep} (${STEP_DEFINITIONS[firstErrorStep - 1]?.label}): ${firstErrorMessage}`,
-      });
-      showToast(`Missing info in Step ${firstErrorStep}. Click 'Go to Step ${firstErrorStep}' to complete.`);
+      setCurrentStep(firstErrorStep);
+      showToast(`Missing required info in Section ${STEP_DEFINITIONS[firstErrorStep - 1]?.label}: ${firstErrorMessage}`);
       scrollToTop();
       return;
     }
-
-    // Resolve signatory name: use signatoryFullName if provided, otherwise fall back to ownerFullName
-    const resolvedSignatoryName = formData.signatoryFullName?.trim() || formData.ownerFullName?.trim() || "";
-
-    // Ensure marketing permissions are disabled when consent is false
-    const submitData = !formData.marketingCommsConsent
-      ? {
-          ...formData,
-          permListPartner: false,
-          permDisplayNameAddress: false,
-          permUsePhotos: false,
-          permDisplayPromoMaterials: false,
-          permSocialChannels: false,
-          signatoryFullName: resolvedSignatoryName,
-        }
-      : { ...formData, signatoryFullName: resolvedSignatoryName };
 
     setIsSubmitting(true);
 
     try {
       const ownershipToken = localStorage.getItem("sago_partner_draft_id");
+      const submitData = {
+        ...formData,
+        ownerFullName: formData.managerFullName || formData.ownerFullName,
+        ownerPhone: formData.managerPhone || formData.ownerPhone,
+        outletDisplayName: formData.tradingName || formData.registeredBusinessName,
+        signatoryFullName: formData.managerFullName || formData.ownerFullName,
+        signatoryBusinessName: formData.registeredBusinessName,
+      };
+
       const res = await fetch("/api/partners/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -418,13 +336,12 @@ export default function PartnerWizard() {
       setSubmissionResult({
         reference: resData.reference,
         status: resData.status,
-        submittedAt: resData.submittedAt,
+        submittedAt: resData.submittedAt || new Date().toISOString(),
       });
-
       scrollToTop();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Submission failed.";
-      showToast(`Error: ${msg}`);
+      const msg = err instanceof Error ? err.message : "Submission error occurred.";
+      showToast(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -447,16 +364,30 @@ export default function PartnerWizard() {
 
   if (isLoadingDraft) {
     return (
-      <div className="partner-wizard-page" ref={containerRef} style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
+      <div
+        className="partner-wizard-page"
+        ref={containerRef}
+        style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}
+      >
         <div style={{ textAlign: "center", color: "rgba(245, 241, 232, 0.6)" }}>
-          <div style={{ width: "40px", height: "40px", border: "3px solid rgba(176, 141, 87, 0.3)", borderTopColor: "#b08d57", borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 1rem" }} />
-          <p style={{ fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.1em" }}>Loading draft…</p>
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              border: "3px solid rgba(176, 141, 87, 0.3)",
+              borderTopColor: "#b08d57",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 1rem",
+            }}
+          />
+          <p style={{ fontSize: "0.9rem", textTransform: "uppercase", letterSpacing: "0.1em" }}>
+            Loading Partner Form…
+          </p>
         </div>
       </div>
     );
   }
-
-  const progressPercentage = ((currentStep - 1) / (STEP_DEFINITIONS.length - 1)) * 100;
 
   return (
     <div className="partner-wizard-page" ref={containerRef}>
@@ -488,96 +419,13 @@ export default function PartnerWizard() {
       <div className="partner-wizard-container">
         {/* Header & Intro */}
         <div className="partner-hero">
-          <span className="partner-hero__badge">
-            <Building2 size={13} /> SAGO Business Partner Program · Pan-African Network
-          </span>
           <h1 className="partner-hero__title">
-            Become a SAGO <em>Partner.</em>
+            1. Business <em>Information.</em>
           </h1>
           <p className="partner-hero__subtitle">
-            Join the premier whisky partner network across Africa. Onboard your bar, restaurant, hotel, or lounge to unlock official promotional campaigns, point-of-sale support, and digital coupon redemption.
+            Partner with SAGO Whisky. Complete the required questions below to register your venue for official distribution and promotional partnership.
           </p>
         </div>
-
-        {/* Stepper Navigation (5 Clean Steps) */}
-        <div className="stepper-nav">
-          <div className="stepper-progress-track">
-            <div
-              className="stepper-progress-fill"
-              style={{ width: `${progressPercentage}%` }}
-            />
-          </div>
-
-          <div className="stepper-steps-wrapper">
-            {STEP_DEFINITIONS.map((step) => {
-              const isCurrent = currentStep === step.number;
-              const isCompleted = step.number < currentStep;
-              const IconComp = step.icon;
-
-              return (
-                <button
-                  key={step.number}
-                  type="button"
-                  onClick={() => handleStepJump(step.number)}
-                  className={`step-item ${isCurrent ? "is-current" : ""} ${
-                    isCompleted ? "is-completed" : ""
-                  }`}
-                  title={`Go to Step ${step.number}: ${step.label}`}
-                >
-                  <div className="step-badge">
-                    {isCompleted ? <CheckCircle2 size={16} /> : step.number}
-                  </div>
-                  <span className="step-label">{step.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Validation Notice Banner (if any required info was missing on submit) */}
-{validationSummary && (
-            <div
-              style={{
-                background: "rgba(239, 68, 68, 0.12)",
-                border: "1px solid rgba(239, 68, 68, 0.4)",
-                borderRadius: "12px",
-                padding: "1rem 1.25rem",
-                marginBottom: "1.5rem",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: "0.75rem",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                <AlertCircle size={20} color="#ef4444" />
-                <span style={{ fontSize: "0.9rem", color: "#fca5a5" }}>
-                  {validationSummary.message}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrentStep(validationSummary.step);
-                  setValidationSummary(null);
-                  scrollToTop();
-                }}
-                style={{
-                  background: "#ef4444",
-                  color: "#fff",
-                  border: "none",
-                  padding: "0.4rem 0.9rem",
-                  borderRadius: "6px",
-                  fontSize: "0.8rem",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                }}
-              >
-                Go to Step {validationSummary.step} ➔
-              </button>
-            </div>
-          )}
 
         {/* Form Panel */}
         <div className="partner-form-card">
@@ -586,12 +434,11 @@ export default function PartnerWizard() {
               data={formData}
               errors={stepErrors}
               onChange={handleFieldChange}
-              onGoToStep={handleStepJump}
             />
           )}
 
           {currentStep === 2 && (
-            <Step2OwnerContact
+            <Step2BusinessAddress
               data={formData}
               errors={stepErrors}
               onChange={handleFieldChange}
@@ -599,7 +446,7 @@ export default function PartnerWizard() {
           )}
 
           {currentStep === 3 && (
-            <Step3PartnershipProducts
+            <Step3BusinessOperations
               data={formData}
               errors={stepErrors}
               onChange={handleFieldChange}
@@ -607,55 +454,68 @@ export default function PartnerWizard() {
           )}
 
           {currentStep === 4 && (
-            <Step4OperationsSettlement
+            <Step4BusinessDocuments
               data={formData}
               errors={stepErrors}
               onChange={handleFieldChange}
-            />
-          )}
-
-          {currentStep === 5 && (
-            <Step5ReviewSubmit
-              data={formData}
-              errors={stepErrors}
-              onGoToStep={handleStepJump}
               onSubmit={handleSubmitFinal}
-              onChange={handleFieldChange}
               isSubmitting={isSubmitting}
             />
           )}
 
-          {/* Bottom Navigation Buttons */}
-          <div className="wizard-bottom-actions">
-            <div className="wizard-bottom-actions__left">
+          {/* Bottom Actions Bar */}
+          <div className="form-actions-bar">
+            <div className="form-actions-bar__left">
               {currentStep > 1 && (
                 <button
                   type="button"
                   onClick={handleBack}
-                  className="btn-wizard-back"
+                  className="btn-secondary"
                 >
-                  <ChevronLeft size={16} /> Back to Step {currentStep - 1}
+                  <ChevronLeft size={16} />
+                  <span>Previous Section</span>
                 </button>
               )}
             </div>
 
-            <div className="wizard-bottom-actions__right">
+            <div className="form-actions-bar__right">
               <button
                 type="button"
                 onClick={handleSaveDraft}
-                className="btn-wizard-draft"
-                title="Save application draft"
+                className="btn-ghost"
+                title="Save current progress"
               >
-                <Save size={14} /> Save Draft
+                <Save size={15} />
+                <span>Save Draft</span>
               </button>
 
-              {currentStep < 5 && (
+              {currentStep < 4 ? (
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="btn-wizard-next"
+                  className="btn-primary"
                 >
-                  Next Step ({currentStep + 1} of 5) <ChevronRight size={16} />
+                  <span>Continue to Next Section</span>
+                  <ChevronRight size={16} />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSubmitFinal}
+                  disabled={isSubmitting}
+                  className="btn-primary"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      <span>Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Submit Partner Application</span>
+                      <Sparkles size={16} />
+                    </>
+                  )}
                 </button>
               )}
             </div>

@@ -240,16 +240,19 @@ export async function saveApplication(
         monthly_sales_volume: formData.monthlySalesVolume || null,
         sells_alcohol: formData.sellsAlcohol ?? true,
         has_bar_manager: formData.hasBarManager ?? true,
-        owner_full_name: formData.ownerFullName,
-        owner_position: formData.ownerPosition,
-        owner_nationality: formData.ownerNationality || "Kenyan",
-        owner_email: formData.ownerEmail,
-        owner_phone: formData.ownerPhone,
+        outlet_category: formData.outletCategory || null,
+        manager_full_name: formData.managerFullName || formData.ownerFullName || null,
+        manager_phone: formData.managerPhone || formData.ownerPhone || null,
+        owner_full_name: formData.managerFullName || formData.ownerFullName || null,
+        owner_position: formData.ownerPosition || "Business Manager",
+        owner_nationality: formData.ownerNationality || null,
+        owner_email: formData.businessEmail || formData.ownerEmail || null,
+        owner_phone: formData.managerPhone || formData.ownerPhone || formData.businessPhone || null,
         owner_alt_phone: formData.ownerAltPhone || null,
-        auth_contact_name: formData.authContactName || formData.ownerFullName || null,
-        auth_contact_title: formData.authContactTitle || formData.ownerPosition || null,
-        auth_contact_email: formData.authContactEmail || formData.ownerEmail || null,
-        auth_contact_phone: formData.authContactPhone || formData.ownerPhone || null,
+        auth_contact_name: formData.authContactName || formData.managerFullName || formData.ownerFullName || null,
+        auth_contact_title: formData.authContactTitle || formData.ownerPosition || "Business Manager",
+        auth_contact_email: formData.authContactEmail || formData.businessEmail || formData.ownerEmail || null,
+        auth_contact_phone: formData.authContactPhone || formData.managerPhone || formData.ownerPhone || null,
         auth_contact_can_sign: formData.authContactCanSign ?? true,
         ownership_structure: formData.ownershipStructure || "Individually Owned",
         directors_partners: formData.directors || [],
@@ -514,8 +517,11 @@ function mapSupabaseRecordToApplication(
           verificationStatus: (ns(d.verification_status || d.verificationStatus) || "pending") as any,
         };
       }),
-      ownerFullName: ns(data.owner_full_name),
-      ownerPosition: ns(data.owner_position),
+      managerFullName: ns(data.manager_full_name) || ns(data.owner_full_name),
+      managerPhone: ns(data.manager_phone) || ns(data.owner_phone),
+      outletCategory: ns(data.outlet_category),
+      ownerFullName: ns(data.manager_full_name) || ns(data.owner_full_name),
+      ownerPosition: ns(data.owner_position) || "Business Manager",
       ownerNationality: ns(data.owner_nationality),
       ownerEmail: ns(data.owner_email),
       ownerPhone: ns(data.owner_phone),
@@ -654,17 +660,21 @@ export async function getAllApplications(
         if (searchQuery && searchQuery.trim()) {
           const q = searchQuery.toLowerCase().trim();
           results = results.filter((app) => {
-            const ref = app.applicationReference.toLowerCase();
-            const name = app.data.registeredBusinessName.toLowerCase();
-            const trading = app.data.tradingName.toLowerCase();
-            const email = app.data.businessEmail.toLowerCase();
-            const county = app.data.county.toLowerCase();
+            const ref = (app.applicationReference || "").toLowerCase();
+            const name = (app.data.registeredBusinessName || "").toLowerCase();
+            const trading = (app.data.tradingName || "").toLowerCase();
+            const email = (app.data.businessEmail || "").toLowerCase();
+            const county = (app.data.county || "").toLowerCase();
+            const country = (app.data.country || "").toLowerCase();
+            const manager = (app.data.managerFullName || app.data.ownerFullName || "").toLowerCase();
             return (
               ref.includes(q) ||
               name.includes(q) ||
               trading.includes(q) ||
               email.includes(q) ||
-              county.includes(q)
+              county.includes(q) ||
+              country.includes(q) ||
+              manager.includes(q)
             );
           });
         }
@@ -686,17 +696,21 @@ export async function getAllApplications(
 
     if (searchQuery && searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      const ref = app.applicationReference.toLowerCase();
-      const name = app.data.registeredBusinessName.toLowerCase();
-      const trading = app.data.tradingName.toLowerCase();
-      const email = app.data.businessEmail.toLowerCase();
-      const county = app.data.county.toLowerCase();
+      const ref = (app.applicationReference || "").toLowerCase();
+      const name = (app.data.registeredBusinessName || "").toLowerCase();
+      const trading = (app.data.tradingName || "").toLowerCase();
+      const email = (app.data.businessEmail || "").toLowerCase();
+      const county = (app.data.county || "").toLowerCase();
+      const country = (app.data.country || "").toLowerCase();
+      const manager = (app.data.managerFullName || app.data.ownerFullName || "").toLowerCase();
       return (
         ref.includes(q) ||
         name.includes(q) ||
         trading.includes(q) ||
         email.includes(q) ||
-        county.includes(q)
+        county.includes(q) ||
+        country.includes(q) ||
+        manager.includes(q)
       );
     }
 
