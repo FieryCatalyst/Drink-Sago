@@ -56,7 +56,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${bodyFont.variable} ${displayFont.variable} h-full antialiased`}
+      className={`${bodyFont.variable} ${displayFont.variable} min-h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <AgeGate>

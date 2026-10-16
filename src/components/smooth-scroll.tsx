@@ -15,15 +15,51 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReducedMotion) return;
 
+    // Detect touch / mobile devices (phones, tablets, touchscreens)
+    // On touch devices, native momentum scrolling provides 60/120fps hardware acceleration
+    // without touch interception lag, fluttering, or sticking.
+    const isTouch =
+      window.matchMedia("(pointer: coarse)").matches ||
+      "ontouchstart" in window ||
+      window.innerWidth <= 800;
+
+    if (isTouch) {
+      // Use native smooth scrolling for in-page anchors on touch devices
+      const handleNativeAnchor = (e: MouseEvent) => {
+        const anchor = (e.target as HTMLElement)?.closest?.("a");
+        if (!anchor) return;
+        const href = anchor.getAttribute("href");
+        if (href && href.startsWith("#") && href.length > 1) {
+          const id = href.slice(1);
+          let targetEl: HTMLElement | null = null;
+          try {
+            const decodedId = decodeURIComponent(id);
+            targetEl = document.getElementById(decodedId);
+          } catch {
+            targetEl = document.getElementById(id);
+          }
+          if (targetEl) {
+            e.preventDefault();
+            targetEl.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }
+      };
+
+      document.addEventListener("click", handleNativeAnchor, { capture: true });
+      return () => {
+        document.removeEventListener("click", handleNativeAnchor, { capture: true });
+      };
+    }
+
     const lenis = new Lenis({
-      duration: 1.0,
+      duration: 1.1,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       orientation: "vertical",
       gestureOrientation: "vertical",
       smoothWheel: true,
-      wheelMultiplier: 1,
-      touchMultiplier: 1,
-      syncTouch: false, // Prevents mobile touch scroll hijacking / glitching
+      wheelMultiplier: 0.85,
+      touchMultiplier: 0,
+      syncTouch: false,
       prevent: (node) => {
         // Prevent Lenis from intercepting scroll within modals, dialogs, dropdowns, or admin portals
         if (!node || typeof node.closest !== "function") return false;
@@ -44,16 +80,22 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
     }
     rafId = requestAnimationFrame(raf);
 
-    // Auto-update Lenis bounds when images or dynamic content load
+    // Debounced bounds update to avoid forced synchronous layout reflows during active scroll
+    let resizeTimer: NodeJS.Timeout | null = null;
     let resizeObserver: ResizeObserver | null = null;
     if (typeof ResizeObserver !== "undefined" && document.body) {
       resizeObserver = new ResizeObserver(() => {
-        lenis.resize();
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          if (!lenis.isScrolling) {
+            lenis.resize();
+          }
+        }, 300);
       });
       resizeObserver.observe(document.body);
     }
 
-    // Global in-page smooth anchor scrolling
+    // Global in-page smooth anchor scrolling for desktop
     const handleAnchorClick = (e: MouseEvent) => {
       const anchor = (e.target as HTMLElement)?.closest?.("a");
       if (!anchor) return;
@@ -83,6 +125,7 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
 
     return () => {
       cancelAnimationFrame(rafId);
+      if (resizeTimer) clearTimeout(resizeTimer);
       resizeObserver?.disconnect();
       document.removeEventListener("click", handleAnchorClick, { capture: true });
       lenis.destroy();

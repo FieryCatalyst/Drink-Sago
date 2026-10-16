@@ -116,8 +116,7 @@ export default function Home() {
             alt="SAGO Gold Reserve Whisky | The House of Premium Spirits"
             fill
             priority
-            unoptimized
-            sizes="100vw"
+            sizes="(max-width: 768px) 100vw, 100vw"
             className="home-hero__image"
           />
           <div className="home-hero__shade" />
